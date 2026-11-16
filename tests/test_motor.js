@@ -1,5 +1,5 @@
 const fs=require('fs'), vm=require('vm'), path=require('path');
-const src=fs.readFileSync(path.join(__dirname,'..','src','motor.js'),'utf8');
+const src=fs.readFileSync(path.join(__dirname,'..','src','surum.js'),'utf8')+fs.readFileSync(path.join(__dirname,'..','src','motor.js'),'utf8');
 const ctx={console, Intl, Date, Math, Number, String, Array, Map, Set, JSON, isFinite, Object};
 vm.createContext(ctx);
 vm.runInContext(src+`

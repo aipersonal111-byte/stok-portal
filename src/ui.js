@@ -1,6 +1,6 @@
 
 // ============================ ARAYÜZ BAŞLA ============================
-const ui = { sayfa: 'panel', tab: {}, f: { hr: { bas: '', bit: '', tip: '', kart: '' }, stok: { donem: 'ay', bas: '', bit: '', gizle: true, uyari: false }, analiz: { bas: '', bit: '' }, seg: {}, ham: false, stoklu: true } };
+const ui = { sayfa: 'panel', tab: {}, f: { hr: { bas: '', bit: '', tip: '', kart: '' }, stok: { donem: 'ay', bas: '', bit: '', gizle: true, uyari: false }, analiz: { bas: '', bit: '' }, seg: {}, ham: false, stoklu: true, log: { bas: '', bit: '', kadi: '', islem: '' } } };
 const $ = id => document.getElementById(id);
 const val = id => { const e = $(id); return e ? e.value : ''; };
 const SAYFALAR = [['panel', '🏠', 'Panel'], ['alis', '📥', 'Alış'], ['uretim', '⚙️', 'Üretim'], ['satis', '💰', 'Satış'], ['zayiat', '🗑️', 'Zayiat'],
@@ -91,7 +91,7 @@ SAYFA.alis = () => {
     return `<tr data-kart="${k.id}" data-grup="${k.grup}" data-ad="${esc(trLower(k.ad + ' ' + k.kat))}" data-ort="${x.ort}">
 <td>${kartEtiket(k)}</td><td>${esc(k.birim)}</td><td class="sag">${mikF(x.kalan)}</td><td class="sag">${x.ort > 0 ? tl(x.ort) : '—'}</td>
 <td class="sag"><input class="in sag" data-f="mik" inputmode="decimal" placeholder="0" autocomplete="off"></td>
-<td class="sag"><input class="in sag" data-f="fy" inputmode="decimal" placeholder="0,00" value="${son ? String(son).replace('.', ',') : ''}" autocomplete="off"></td>
+<td class="sag"><input class="in sag" data-f="fy" inputmode="decimal" placeholder="0,00" value="${son && izin('mali') ? String(son).replace('.', ',') : ''}" autocomplete="off"></td>
 <td class="sag" data-f="tut"></td><td class="uy" data-f="uy"></td></tr>`; };
   return baslik('📥', 'Alış / Gelen', 'Gelen malın miktarını (ve varsa birim fiyatını) yazın; boş satırlar kaydedilmez. Birim fiyat maliyeti ve takribi kârı hesaplar.') +
     `<div class="card" data-live="alis"><div class="satir"><label>Tarih<input type="date" id="al-t" value="${bugun()}"></label>
@@ -101,17 +101,17 @@ SAYFA.alis = () => {
 <div class="altbar"><span id="al-ozet" class="mut">Henüz miktar girilmedi.</span><button class="btn pri" data-act="alis-kaydet">Stoğa ekle</button></div></div>`;
 };
 function liveAlis() {
-  let n = 0, top = 0;
+  const m = izin('mali'); let n = 0, top = 0;
   document.querySelectorAll('#tb-al tbody tr').forEach(tr => {
-    const mik = sayiOku(tr.querySelector('[data-f=mik]').value), fy = sayiOku(tr.querySelector('[data-f=fy]').value), ort = +tr.dataset.ort;
-    const tut = tr.querySelector('[data-f=tut]'), uy = tr.querySelector('[data-f=uy]');
+    const fyEl = tr.querySelector('[data-f=fy]'), tut = tr.querySelector('[data-f=tut]'), uy = tr.querySelector('[data-f=uy]');
+    const mik = sayiOku(tr.querySelector('[data-f=mik]').value), fy = fyEl ? sayiOku(fyEl.value) : NaN, ort = +tr.dataset.ort;
     if (gecerli(mik)) {
       n++; const t = gecerli(fy) ? mik * fy : 0; top += t;
-      tut.textContent = gecerli(fy) ? tl(t) : '—';
-      uy.textContent = (gecerli(fy) && ort > 0 && Math.abs(fy / ort - 1) > 0.2) ? `ort.'a göre ${fy > ort ? '+' : '−'}%${nf0.format(Math.abs(fy / ort - 1) * 100)}` : (!gecerli(fy) ? 'fiyat yok → ort. kullanılır' : '');
-    } else { tut.textContent = ''; uy.textContent = ''; }
+      if (tut) tut.textContent = gecerli(fy) ? tl(t) : '—';
+      if (uy) uy.textContent = (gecerli(fy) && ort > 0 && Math.abs(fy / ort - 1) > 0.2) ? `ort.'a göre ${fy > ort ? '+' : '−'}%${nf0.format(Math.abs(fy / ort - 1) * 100)}` : (!gecerli(fy) ? 'fiyat yok → ort. kullanılır' : '');
+    } else { if (tut) tut.textContent = ''; if (uy) uy.textContent = ''; }
   });
-  $('al-ozet').innerHTML = n ? `<b>${n}</b> kalem · toplam alış <b>${tl(top)}</b>` : 'Henüz miktar girilmedi.';
+  $('al-ozet').innerHTML = n ? `<b>${n}</b> kalem${m ? ` · toplam alış <b>${tl(top)}</b>` : ''}` : 'Henüz miktar girilmedi.';
 }
 
 // ---------- SATIŞ ----------
@@ -126,7 +126,7 @@ SAYFA.satis = () => {
 <td>${kartEtiket(k)}</td><td>${esc(k.birim)}</td><td class="sag">${mikF(x.kalan)}</td><td class="sag">${x.ort > 0 ? tl(x.ort) : '—'}</td>
 <td class="sag mut">${x.ort > 0 ? tl(tk) : '—'}</td>
 <td class="sag"><input class="in sag" data-f="mik" inputmode="decimal" placeholder="0" autocomplete="off"></td>
-<td class="sag"><input class="in sag" data-f="fy" inputmode="decimal" placeholder="${x.ort > 0 ? fmt(tk) : '0,00'}" value="${son ? String(son).replace('.', ',') : ''}" autocomplete="off"></td>
+<td class="sag"><input class="in sag" data-f="fy" inputmode="decimal" placeholder="${x.ort > 0 && izin('mali') ? fmt(tk) : '0,00'}" value="${son ? String(son).replace('.', ',') : ''}" autocomplete="off"></td>
 <td class="sag" data-f="tut"></td><td class="uy" data-f="uy"></td></tr>`; };
   return ust + `<div class="card" data-live="satis"><div class="satir"><label>Tarih<input type="date" id="sa-t" value="${bugun()}"></label>
 <label class="gen">Not<input id="sa-not" placeholder="müşteri, şube… (isteğe bağlı)" autocomplete="off"></label>
@@ -136,20 +136,21 @@ ${kk.length ? `<div class="tw"><table class="tbl" id="tb-sa"><thead><tr><th>Ür�
 <div class="altbar"><span id="sa-ozet" class="mut">Henüz miktar girilmedi.</span><button class="btn pri" data-act="satis-kaydet" id="sa-btn">Satışları kaydet</button></div></div>`;
 };
 function liveSatis() {
-  let n = 0, ciro = 0, mal = 0, tk = 0, hata = 0;
+  const m = izin('mali'); let n = 0, ciro = 0, mal = 0, tk = 0, hata = 0;
   document.querySelectorAll('#tb-sa tbody tr').forEach(tr => {
     const mik = sayiOku(tr.querySelector('[data-f=mik]').value), fy = sayiOku(tr.querySelector('[data-f=fy]').value);
     const net = +tr.dataset.net, ort = +tr.dataset.ort, tkf = +tr.dataset.tk;
     const tut = tr.querySelector('[data-f=tut]'), uy = tr.querySelector('[data-f=uy]');
     if (gecerli(mik)) {
-      n++; const gercek = gecerli(fy), t = mik * (gercek ? fy : tkf);
+      n++; const gercek = gecerli(fy), t = gercek ? mik * fy : (m ? mik * tkf : 0);
       ciro += t; mal += mik * ort; if (!gercek) tk += t;
-      tut.innerHTML = (gercek ? '' : '<span class="tk">~</span> ') + tl(t);
-      if (mik > net + 0.001) { uy.textContent = 'stok yetersiz'; uy.className = 'uy er'; hata++; } else { uy.textContent = ''; uy.className = 'uy'; }
-    } else { tut.textContent = ''; uy.textContent = ''; uy.className = 'uy'; }
+      if (tut) tut.innerHTML = gercek ? tl(t) : (m ? '<span class="tk">~</span> ' + tl(t) : '—');
+      const yet = mik > net + 0.001; if (yet) hata++;
+      if (uy) { uy.textContent = yet ? 'stok yetersiz' : ''; uy.className = yet ? 'uy er' : 'uy'; }
+    } else { if (tut) tut.textContent = ''; if (uy) { uy.textContent = ''; uy.className = 'uy'; } }
   });
   const el = $('sa-ozet'); if (!el) return;
-  el.innerHTML = n ? `<b>${n}</b> kalem · ciro <b>${tl(ciro)}</b>${tk > 0 ? ` (${tl(tk)} takribi)` : ''} · maliyet ${tl(mal)} · kâr <b>${tl(ciro - mal)}</b> ${tk > 0 ? takribiEt : ''}` : 'Henüz miktar girilmedi.';
+  el.innerHTML = n ? (m ? `<b>${n}</b> kalem · ciro <b>${tl(ciro)}</b>${tk > 0 ? ` (${tl(tk)} takribi)` : ''} · maliyet ${tl(mal)} · kâr <b>${tl(ciro - mal)}</b> ${tk > 0 ? takribiEt : ''}` : `<b>${n}</b> kalem satılacak`) : 'Henüz miktar girilmedi.';
   const b = $('sa-btn'); if (b) b.disabled = hata > 0;
 }
 
@@ -168,20 +169,20 @@ ${kk.length ? `<div class="tw"><table class="tbl" id="tb-za"><thead><tr><th>Ür�
   const z = aktif().filter(r => r.tip === 'ZAYIAT').sort((a, b) => (a.t < b.t ? 1 : -1) || b.id - a.id).slice(0, 200);
   const t2 = z.length ? tablo([{ b: 'Tarih', f: r => trTarih(r.t) }, { b: 'Ürün', f: r => esc(kartAd(r.kart)) }, { b: 'Miktar', c: 'sag', f: r => `${mikF(r.mik)} ${esc(kartBirim(r.kart))}` },
     { b: 'Değer', c: 'sag', f: r => tl(r.mik * r.bm) }, { b: 'Neden', f: r => esc(r.neden) }, { b: 'Not', f: r => esc(r.not) },
-    { b: '', f: r => sagBtn('hr-sil', r.id, '🗑️', 'Sil') }], z) : bos('Henüz zayiat kaydı yok.');
+    { b: '', f: r => izin('duzelt') ? sagBtn('hr-sil', r.id, '🗑️', 'Sil') : '' }], z) : bos('Henüz zayiat kaydı yok.');
   return baslik('🗑️', 'Zayiat / İkram', 'Satış dışı çıkışlar: bozulan, dökülen, ikram, personel yemeği. Stoktan düşer, kayıp olarak raporlanır.') +
     sekmeler('za', [['kayit', '➕ Kayıt'], ['gecmis', '📋 Geçmiş']]) + (aktifSekme('za', 'kayit') === 'kayit' ? t1 : `<div class="card">${t2}</div>`);
 };
 function liveZayiat() {
-  let n = 0, top = 0, hata = 0;
+  const m = izin('mali'); let n = 0, top = 0, hata = 0;
   document.querySelectorAll('#tb-za tbody tr').forEach(tr => {
     const mik = sayiOku(tr.querySelector('[data-f=mik]').value), net = +tr.dataset.net, ort = +tr.dataset.ort;
     const tut = tr.querySelector('[data-f=tut]'), uy = tr.querySelector('[data-f=uy]');
-    if (gecerli(mik)) { n++; top += mik * ort; tut.textContent = tl(mik * ort); if (mik > net + 0.001) { uy.textContent = 'stok yetersiz'; uy.className = 'uy er'; hata++; } else { uy.textContent = ''; uy.className = 'uy'; } }
-    else { tut.textContent = ''; uy.textContent = ''; uy.className = 'uy'; }
+    if (gecerli(mik)) { n++; top += mik * ort; if (tut) tut.textContent = tl(mik * ort); const yet = mik > net + 0.001; if (yet) hata++; if (uy) { uy.textContent = yet ? 'stok yetersiz' : ''; uy.className = yet ? 'uy er' : 'uy'; } }
+    else { if (tut) tut.textContent = ''; if (uy) { uy.textContent = ''; uy.className = 'uy'; } }
   });
   const el = $('za-ozet'); if (!el) return;
-  el.innerHTML = n ? `<b>${n}</b> kalem · kayıp değeri <b>${tl(top)}</b>` : 'Henüz miktar girilmedi.';
+  el.innerHTML = n ? `<b>${n}</b> kalem${m ? ` · kayıp değeri <b>${tl(top)}</b>` : ''}` : 'Henüz miktar girilmedi.';
   const b = $('za-btn'); if (b) b.disabled = hata > 0;
 }
 
@@ -189,7 +190,7 @@ function liveZayiat() {
 function uretimSatiri(tur, secili) {
   const gr = tur === 'c' ? ['MAMUL'] : ['HAM', 'MAMUL'];
   return `<div class="dr"><select data-f="kart">${kartSecim(gr, secili)}</select><input class="in sag" data-f="mik" inputmode="decimal" placeholder="Miktar" autocomplete="off">
-${tur === 'y' ? '<input class="in sag" data-f="deger" inputmode="decimal" placeholder="Birim değer ₺ (ops.)" autocomplete="off">' : ''}<button class="ib" data-act="ur-sil" title="Satırı kaldır">✕</button></div>`;
+${tur === 'y' && izin('mali') ? '<input class="in sag" data-f="deger" inputmode="decimal" placeholder="Birim değer ₺ (ops.)" autocomplete="off">' : ''}<button class="ib" data-act="ur-sil" title="Satırı kaldır">✕</button></div>`;
 }
 SAYFA.uretim = () => {
   const ust = baslik('⚙️', 'Üretim', 'Ham maddeyi işleyip mamül üretin. Birden çok girdi, yan ürün ve fire aynı ekranda; ham stok düşer, mamül stok artar.');
@@ -199,7 +200,7 @@ SAYFA.uretim = () => {
     return ust + sek + `<div class="card">${s.length ? tablo([{ b: 'Tarih', f: r => trTarih(r.t) }, { b: 'Girdi', f: r => esc(r.girdi) }, { b: 'Mamül', f: r => esc(r.cikti) }, { b: 'Yan ürün', f: r => esc(r.yan) || '—' },
       { b: 'Girdi', c: 'sag', f: r => mikF(r.G) }, { b: 'Mamül', c: 'sag', f: r => mikF(r.M) }, { b: 'Yan', c: 'sag', f: r => mikF(r.Y) }, { b: 'Fire', c: 'sag', f: r => mikF(r.F) },
       { b: 'Randıman', c: 'sag', f: r => isNaN(r.randiman) ? '—' : yuzde(r.randiman) }, { b: 'Girdi maliyeti', c: 'sag', f: r => tl(r.maliyet) },
-      { b: '', f: r => `<button class="btn kucuk dng" data-act="seans-iptal" data-id="${esc(r.kod)}">İptal et</button>` }], s) : bos('Henüz üretim kaydı yok.')}
+      { b: '', f: r => !izin('duzelt') ? '' : `<button class="btn kucuk dng" data-act="seans-iptal" data-id="${esc(r.kod)}">İptal et</button>` }], s) : bos('Henüz üretim kaydı yok.')}
 <p class="mut kucuk">İptal edilen üretimin tüm hareketleri (ham çıkış, mamül, yan ürün, fire) arşive taşınır ve stoklar eski haline döner. Üretilen mamül satıldıysa iptal edilemez.</p></div>`;
   }
   const hamVar = kartlarSirali().some(k => k.grup === 'HAM'), mamVar = kartlarSirali().some(k => k.grup === 'MAMUL');
@@ -215,10 +216,11 @@ SAYFA.uretim = () => {
 };
 function okuSatirlar(secId, yan) {
   return [...document.querySelectorAll(`#${secId} .dr`)].map(r => ({ kart: +r.querySelector('[data-f=kart]').value || 0, mik: sayiOku(r.querySelector('[data-f=mik]').value),
-    deger: yan ? sayiOku(r.querySelector('[data-f=deger]').value) : undefined }));
+    deger: yan && r.querySelector('[data-f=deger]') ? sayiOku(r.querySelector('[data-f=deger]').value) : undefined }));
 }
 function liveUretim() {
   const el = $('ur-onizle'); if (!el) return;
+  const mm = izin('mali');
   const g = okuSatirlar('ur-g'), c = okuSatirlar('ur-c'), y = okuSatirlar('ur-y', true);
   const o = uretimOnizle(g, c, y, sayiOku(val('ur-fire')));
   $('ur-firebox').style.display = (o.girdiler.length && o.ciktilar.length && !o.ayni) ? 'flex' : 'none';
@@ -227,10 +229,9 @@ function liveUretim() {
   const b = o.ayni ? ' ' + o.birimler[0] : '', sd = d => `<span class="oz"><small>${d[0]}</small><b>${d[1]}</b></span>`;
   const mamTk = o.ciktilar.map(x => `${esc(kartAd(x.kart))}: maliyet ${tl(o.birimMaliyet)}/${esc(kartBirim(x.kart))} · takribi satış ${tl(takribiFiyat(o.birimMaliyet, K(x.kart)))}`).join(' &nbsp;|&nbsp; ');
   el.innerHTML = `<div class="ozs">${sd(['Girdi', o.ayni ? mikF(o.G) + b : '—'])}${sd(['Mamül', o.ayni ? mikF(o.M) + b : '—'])}${sd(['Yan ürün', o.ayni ? mikF(o.Y) + b : '—'])}${sd(['Fire', mikF(o.fire) + b])}${sd(['Randıman', isNaN(o.randiman) ? '—' : yuzde(o.randiman)])}</div>
-<div class="ozs">${sd(['Girdi maliyeti', tl(o.maliyet)])}${sd(['− Yan ürün değeri', tl(o.kredi)])}${sd(['Mamülün net maliyeti', tl(o.net)])}</div>
-<div class="mut kucuk">${mamTk} ${takribiEt}</div>
+${mm ? `<div class="ozs">${sd(['Girdi maliyeti', tl(o.maliyet)])}${sd(['− Yan ürün değeri', tl(o.kredi)])}${sd(['Mamülün net maliyeti', tl(o.net)])}</div><div class="mut kucuk">${mamTk} ${takribiEt}</div>` : ''}
 ${o.fazla > 0 ? `<div class="not">Çıkan toplam girdiden ${mikF(o.fazla)}${b} fazla (su/katkı eklendiyse normaldir). Fire 0 kabul edilir.</div>` : ''}
-${o.maliyet <= 0 ? '<div class="not">Girdilerin maliyeti 0 ₺ görünüyor (alışlarda fiyat girilmemiş). Mamül maliyeti de 0 ₺ olacak.</div>' : ''}
+${mm && o.maliyet <= 0 ? '<div class="not">Girdilerin maliyeti 0 ₺ görünüyor (alışlarda fiyat girilmemiş). Mamül maliyeti de 0 ₺ olacak.</div>' : ''}
 ${o.stokHata.length ? `<div class="not er">Stok yetersiz: ${o.stokHata.map(esc).join(' | ')}</div>` : ''}`;
   btn.disabled = o.stokHata.length > 0;
 }
@@ -252,7 +253,7 @@ ${S.donem === 'aralik' ? `<label>Başlangıç<input type="date" data-set="stok.b
 <label class="chk"><input type="checkbox" data-set="stok.gizle" ${S.gizle ? 'checked' : ''}> Hareketsiz ve stoğu 0 olanları gizle</label><label class="chk"><input type="checkbox" data-set="stok.uyari" ${S.uyari ? 'checked' : ''}> Sadece uyarılılar</label>
 <button class="btn" data-act="csv-stok">⬇ Excel (CSV)</button></div>`;
   const sd = stokDegerleri();
-  const kpis = `<div class="grid g4">${GRUPLAR.map(g => kpi(`${GRUP_IKON[g]} ${GRUP_AD[g]}`, `${sd[g].n} kalem stokta`, `Değer ${tl(sd[g].deger)}${g !== 'HAM' ? ` · takribi satış ${tl(sd[g].takribi)}` : ''}`)).join('')}${kpi('⚠️ Dikkat', uyarilar().length + ' kart', 'asgari altı veya eksi stok')}</div>`;
+  const kpis = `<div class="grid g4">${GRUPLAR.map(g => kpi(`${GRUP_IKON[g]} ${GRUP_AD[g]}`, `${sd[g].n} kalem stokta`, (izin('mali') ? `Değer ${tl(sd[g].deger)}${g !== 'HAM' ? ` · takribi satış ${tl(sd[g].takribi)}` : ''}` : ''))).join('')}${kpi('⚠️ Dikkat', uyarilar().length + ' kart', 'asgari altı veya eksi stok')}</div>`;
   const tabId = aktifSekme('st', 'TICARI');
   const sek = sekmeler('st', [['TICARI', `${GRUP_IKON.TICARI} Ticari`], ['HAM', `${GRUP_IKON.HAM} Ham`], ['MAMUL', `${GRUP_IKON.MAMUL} Mamül`], ['TUM', '📋 Tümü'], ['SIP', '🛍️ Sipariş listesi']]);
   let govde;
@@ -294,7 +295,7 @@ SAYFA.hareket = () => {
     const s = db.hr.filter(r => r.sil).sort((a, b) => (a.silTs < b.silTs ? 1 : -1)).slice(0, 400);
     return ust + `<div class="card">${s.length ? tablo([{ b: 'Tarih', f: r => trTarih(r.t) }, { b: 'Ürün', f: r => esc(kartAd(r.kart)) }, { b: 'Hareket', f: r => TIP_AD[r.tip] },
       { b: 'Miktar', c: 'sag', f: r => `${mikF(r.mik)} ${esc(kartBirim(r.kart))}` }, { b: 'Silinme', f: r => trTarih((r.silTs || '').slice(0, 10)) }, { b: 'Neden', f: r => esc(r.silNeden) },
-      { b: '', f: r => sagBtn('hr-geri', r.id, '♻️', 'Geri al') }], s) + '<p class="mut kucuk">Üretim kayıtları bütün olarak geri gelir.</p>' : bos('Silinmiş kayıt yok.')}</div>`;
+      { b: '', f: r => izin('duzelt') ? sagBtn('hr-geri', r.id, '♻️', 'Geri al') : '' }], s) + '<p class="mut kucuk">Üretim kayıtları bütün olarak geri gelir.</p>' : bos('Silinmiş kayıt yok.')}</div>`;
   }
   let rows = aktif().filter(r => (!H.bas || r.t >= H.bas) && (!H.bit || r.t <= H.bit) && (!H.tip || r.tip === H.tip) && (!H.kart || String(r.kart) === String(H.kart)));
   rows = rows.slice().sort((a, b) => (a.t < b.t ? 1 : a.t > b.t ? -1 : b.id - a.id));
@@ -306,8 +307,8 @@ SAYFA.hareket = () => {
   return ust + filt + `<div class="card">${gos.length ? tablo([{ b: 'Tarih', f: r => trTarih(r.t) }, { b: 'Ürün', f: r => esc(kartAd(r.kart)) }, { b: 'Hareket', f: r => TIP_AD[r.tip] },
     { b: 'Yön', f: r => r.yon === 'G' ? '<span class="g">▲ gelen</span>' : r.yon === 'C' ? '<span class="c">▼ giden</span>' : '<span class="mut">• fire</span>' },
     { b: 'Miktar', c: 'sag', f: r => `${mikF(r.mik)} ${esc(kartBirim(r.kart))}` }, { b: 'Birim maliyet', c: 'sag', f: r => r.bm > 0 ? tl(r.bm) : '—' }, { b: 'Satış fiyatı', c: 'sag', f: hrAciklama },
-    { b: 'Not / neden', f: r => esc([r.neden, r.not].filter(Boolean).join(' · ')) },
-    { b: '', c: 'sag nowrap', f: r => (duzenlenebilir(r) ? sagBtn('hr-duzenle', r.id, '✏️', 'Düzenle') : '') + (r.kod ? (r.kod.startsWith('SYM-') ? sagBtn('sayim-iptal', r.kod, '↩️', 'Sayımı iptal et') : sagBtn('seans-iptal', r.kod, '↩️', 'Üretimi iptal et')) : sagBtn('hr-sil', r.id, '🗑️', 'Sil')) }],
+    { b: 'Kullanıcı', f: r => esc(r.kul || '—') }, { b: 'Not / neden', f: r => esc([r.neden, r.not].filter(Boolean).join(' · ')) },
+    { b: '', c: 'sag nowrap', f: r => !izin('duzelt') ? '' : (duzenlenebilir(r) ? sagBtn('hr-duzenle', r.id, '✏️', 'Düzenle') : '') + (r.kod ? (r.kod.startsWith('SYM-') ? sagBtn('sayim-iptal', r.kod, '↩️', 'Sayımı iptal et') : sagBtn('seans-iptal', r.kod, '↩️', 'Üretimi iptal et')) : sagBtn('hr-sil', r.id, '🗑️', 'Sil')) }],
     gos, { id: 'tb-hr', attr: r => `data-ad="${esc(trLower(kartAd(r.kart) + ' ' + r.not + ' ' + r.neden + ' ' + TIP_AD[r.tip]))}" data-grup="all"` }) +
     (rows.length > 500 ? `<p class="mut kucuk">En yeni 500 kayıt gösteriliyor (${rows.length}). Süzgeçleri daraltın veya CSV'ye aktarın.</p>` : '') : bos('Filtreye uyan hareket yok.')}</div>`;
 };
@@ -447,36 +448,134 @@ ${db.kartlar.length ? tablo([{ b: 'Ürün', f: k => kartEtiket(k) + (k.aktif ===
 };
 
 // ---------- AYARLAR ----------
-const klasorDurumMetni = () => !Klasor.destek ? chip('Bu tarayıcı desteklemiyor', 'wr') : Klasor.durum === 'tamam' ? chip('Aktif', 'ok') : Klasor.durum === 'izin' ? chip('İzin gerekiyor', 'wr') : Klasor.durum === 'hata' ? chip('Hata', 'er') : chip('Seçilmedi', 'wr');
+const klasorDurumMetni = () => {
+  if (!Klasor.secilebilir) return chip('Bu tarayıcı desteklemiyor', 'er');
+  return { tamam: chip('Aktif', 'ok'), izin: chip('İzin gerekiyor', 'wr'), kayip: chip('BULUNAMADI', 'er'), hata: chip('Hata', 'er'), yok: chip('Seçilmedi', 'er') }[Klasor.durum];
+};
+const LOG_AD = { GIRIS: 'Giriş', GIRIS_HATA: 'Hatalı giriş', CIKIS: 'Çıkış', KILIT: 'Oturum kilidi', ALIS: 'Alış', URETIM: 'Üretim', SATIS: 'Satış', ZAYIAT: 'Zayiat / ikram', SAYIM: 'Sayım',
+  DUZENLE: 'Düzenleme', SIL: 'Silme', GERI: 'Geri alma', KART: 'Kart', AYAR: 'Ayar', KULLANICI: 'Kullanıcı', YEDEK: 'Yedek', SURUM: 'Sürüm' };
+const rolSecenek = sec => secenek(Object.entries(ROLLER).map(([k, r]) => [k, r.ad]), sec);
+const saatMetni = ts => (ts ? new Date(ts).toLocaleString('tr-TR') : '—');
+
+/** Yedek durumuna göre kullanıcıya gösterilecek uyarı (null = sorun yok). */
+function yedekMesaj() {
+  const d = Kayit.yedekDurumu(); if (d.kod === 'tamam') return null;
+  const ad = esc(Klasor.ad || ''), yet = izin('ayar');
+  const indir = yet ? '<button class="btn kucuk" data-act="yedek-indir">⬇ Yedeği indir</button>' : '';
+  const sec = yet ? `${Klasor.destek ? '<button class="btn kucuk pri" data-act="klasor-sec">📁 Klasör seç</button>' : ''}${Klasor.dosyaDestek ? '<button class="btn kucuk" data-act="dosya-sec">📄 Dosya seç</button>' : ''}` : '';
+  const ek = Kayit.sonIndirme ? ` Son elle indirilen yedek: ${saatMetni(Kayit.sonIndirme)}.` : ' Henüz elle yedek indirilmemiş.';
+  const kimeye = yet ? '' : ' Lütfen yöneticinize bildirin.';
+  switch (d.kod) {
+    case 'yok': return { s: d.seviye === 'hata' ? 'er' : 'wr', t: `⚠️ <b>Yedek konumu seçilmedi.</b> Verileriniz şu anda <b>yalnızca bu tarayıcıda</b> tutuluyor; tarayıcı verisi silinirse veya bozulursa geri getirilemez. Bir klasör (önerilen) veya tek yedek dosyası seçince her değişiklik anında oraya yedeklenir.${ek}${kimeye}`, b: sec + indir };
+    case 'kayip': return { s: 'er', t: `⚠️ <b>Yedek konumu bulunamadı</b> (“${ad}” silinmiş, taşınmış veya sürücüsü takılı değil). Veriler tarayıcıda tutuluyor ama <b>yedek alınmıyor</b>. Konumu geri getirirseniz otomatik yeniden bağlanılır; aksi halde yeni konum seçin veya yedeği indirin.${ek}${kimeye}`, b: sec + indir };
+    case 'izin': return { s: 'wr', t: `📁 “${ad}” yedek konumuna yazmak için tarayıcı izni gerekiyor; izin verilene kadar yedek yazılmıyor (veriler tarayıcıda tutuluyor).${kimeye}`, b: (yet ? '<button class="btn kucuk pri" data-act="klasor-izin">İzin ver</button>' : '') + indir };
+    case 'hata': return { s: 'er', t: `⚠️ Yedek konumuna yazılamadı: ${esc(Klasor.hata || 'bilinmeyen hata')}. Veriler tarayıcıda tutuluyor; yedeği indirin veya konumu yeniden seçin.${ek}${kimeye}`, b: sec + indir };
+    default: return { s: d.seviye === 'hata' ? 'er' : 'wr', t: `⚠️ Bu tarayıcı yedek konumuna otomatik yazamaz (Chrome veya Edge gerekir). Veriler yalnızca bu tarayıcıda tutuluyor; düzenli olarak yedeği indirin.${ek}${kimeye}`, b: indir };
+  }
+}
+
+function ayarSekmeleri() {
+  const l = [];
+  if (izin('ayar')) l.push(['genel', '⚙️ Genel'], ['yedek', '💾 Yedekleme'], ['surum', '🆕 Sürüm']);
+  if (izin('kullanici')) l.push(['kullanici', '👥 Kullanıcılar']);
+  if (izin('log')) l.push(['gunluk', '📜 Günlük']);
+  return l;
+}
 SAYFA.ayar = () => {
-  const sd = new Date(Kayit.sonKayit || db.gun || 0);
-  return baslik('🔧', 'Ayarlar & yedekleme', 'İşletme bilgileri, takribi kâr oranı ve veri güvenliği.') +
-    `<div class="card"><h3>İşletme</h3><div class="satir"><label class="gen">İşletme adı<input id="ay-firma" value="${esc(db.firma)}" autocomplete="off"></label>
-<label>Genel takribi kâr oranı %<input id="ay-kar" inputmode="decimal" value="${String(+db.ayar.kar || 0).replace('.', ',')}" style="width:110px"></label><button class="btn pri" data-act="ayar-kaydet">Kaydet</button></div>
-<p class="mut kucuk">Satış fiyatı girilmeyen satışlarda ve "takribi satış değeri"nde kullanılır: <i>ortalama maliyet × (1 + oran)</i>. Ürün bazında farklı oran için Kartlar sayfasında "Kâr oranı %" girin. Sonradan değiştirmek, geçmiş satışların kaydedilmiş oranını değiştirmez.</p></div>
-<div class="card"><h3>💾 Yedekleme</h3><table class="tbl mali"><tbody>
-<tr><td>Tarayıcı kaydı (her değişiklikte)</td><td class="sag">${Depo.ok ? chip('Aktif', 'ok') : chip('Kullanılamıyor', 'er')}</td></tr>
-<tr><td>Yedek klasörü ${Klasor.ad ? `<b>${esc(Klasor.ad)}</b>` : ''}</td><td class="sag">${klasorDurumMetni()}</td></tr>
-<tr><td>Son kayıt</td><td class="sag">${Kayit.sonKayit || db.gun ? sd.toLocaleString('tr-TR') : '—'}</td></tr>
-<tr><td>Kayıtlar</td><td class="sag">${db.kartlar.length} kart · ${db.hr.length} hareket</td></tr></tbody></table>
-<div class="satir">${Klasor.destek ? `<button class="btn pri" data-act="klasor-sec">📁 ${Klasor.h ? 'Yedek klasörünü değiştir' : 'Yedek klasörü seç'}</button>` : ''}${Klasor.durum === 'izin' ? '<button class="btn wr" data-act="klasor-izin">🔓 Klasör iznini ver</button>' : ''}
-<button class="btn" data-act="yedek-simdi">💾 Şimdi yedekle</button><button class="btn" data-act="yedek-indir">⬇ Yedeği indir (JSON)</button><button class="btn" data-act="yedek-ac">⬆ Yedekten aç…</button></div>
-<ul class="yardim">${Klasor.destek ? `<li>Klasör seçildikten sonra <b>her değişiklikte</b> <code>stok_portal_guncel.json</code> güncellenir; ayrıca <code>gunluk_*.json</code> (son 90 gün) ve <code>anlik_*.json</code> (saatlik, son 48) tutulur. En iyisi bulut senkronize bir klasör seçmektir (OneDrive, Google Drive, USB).</li>
-<li>Windows/Chrome bazı klasörleri (Masaüstü, Belgeler, İndirilenler'in kendisi) seçmeye izin vermez: o klasörün <b>içinde yeni bir klasör</b> oluşturup (ör. <code>StokYedek</code>) onu seçin.</li>
-<li>Tarayıcı yeniden açıldığında Chrome klasör iznini yeniden isteyebilir; yukarıda "Klasör iznini ver" düğmesi çıkar.</li>` : '<li>Bu tarayıcı klasöre otomatik yazamaz. <b>Chrome veya Edge</b> kullanın ya da düzenli olarak "Yedeği indir" yapın.</li>'}
-<li>Bu bilgisayarın tarayıcı verisini silmeyin (geçmişi temizlerken "site verileri"ni işaretlemeyin). Aksi halde yedeğiniz son kurtarma yoludur.</li></ul>
-<div id="yedek-liste"><p class="mut">Yedek listesi yükleniyor…</p></div></div>
+  const sek = ayarSekmeleri(); if (!sek.length) return baslik('🔧', 'Ayarlar', '') + bos('Bu sayfa için yetkiniz yok.');
+  const t = sek.some(([k]) => k === aktifSekme('ay', sek[0][0])) ? aktifSekme('ay', sek[0][0]) : sek[0][0]; ui.tab.ay = t;
+  return baslik('🔧', 'Ayarlar', 'İşletme, yedekleme, sürüm, kullanıcılar ve kayıt günlüğü.') + sekmeler('ay', sek) + ({ genel: ayarGenel, yedek: ayarYedek, surum: ayarSurum, kullanici: ayarKullanici, gunluk: ayarGunluk })[t]();
+};
+
+function ayarGenel() {
+  return `<div class="card"><h3>İşletme</h3><div class="satir"><label class="gen">İşletme adı<input id="ay-firma" value="${esc(db.firma)}" autocomplete="off"></label>
+<label>Genel takribi kâr oranı %<input id="ay-kar" inputmode="decimal" value="${String(+db.ayar.kar || 0).replace('.', ',')}" style="width:110px"></label>
+<label>Hareketsizlikte oturum kilidi (dk)<input id="ay-kilit" inputmode="numeric" value="${+db.ayar.kilitDk || 15}" style="width:110px" title="Giriş koruması açıksa, bu süre işlem yapılmazsa oturum kilitlenir"></label><button class="btn pri" data-act="ayar-kaydet">Kaydet</button></div>
+<p class="mut kucuk">Kâr oranı: satış fiyatı girilmeyen satışlarda ve "takribi satış değeri"nde <i>ortalama maliyet × (1 + oran)</i> olarak kullanılır. Ürün bazında farklı oran için Kartlar sayfasında "Kâr oranı %" girin. Sonradan değiştirmek geçmiş satışların kaydedilmiş oranını değiştirmez.</p></div>
 <div class="card"><h3>⬇ Dışa aktar</h3><div class="satir"><button class="btn" data-act="csv-stok">Stok durumu (CSV)</button><button class="btn" data-act="csv-hr">Tüm hareketler (CSV)</button></div><p class="mut kucuk">CSV dosyaları Excel'de doğrudan açılır (noktalı virgül ayırıcı).</p></div>
 <div class="card"><h3>🧪 Diğer</h3><div class="satir">${db.kartlar.length ? '' : '<button class="btn" data-act="ornek">Örnek veri yükle</button>'}<button class="btn dng" data-act="sifirla">Tüm verileri sil…</button></div><p class="mut kucuk">Stok Portal sürüm ${SURUM} · veri biçimi v${db.v}</p></div>`;
-};
+}
+
+function ayarYedek() {
+  const m = yedekMesaj();
+  const konum = Klasor.h ? `${Klasor.tur === 'dosya' ? '📄 Dosya' : '📁 Klasör'}: <b>${esc(Klasor.ad)}</b>` : '<span class="c">seçilmedi</span>';
+  return `<div class="card"><h3>💾 Yedek konumu</h3>
+${m ? `<div class="ban ${m.s}"><span>${m.t}</span></div>` : `<div class="ban ok"><span>✅ Her değişiklik anında ${Klasor.tur === 'dosya' ? 'seçilen dosyaya' : 'seçilen klasöre'} yazılıyor.</span></div>`}
+<table class="tbl mali"><tbody>
+<tr><td>Tarayıcı kaydı (her değişiklikte)</td><td class="sag">${Depo.ok ? chip('Aktif', 'ok') : chip('Kullanılamıyor', 'er')}</td></tr>
+<tr><td>Yedek konumu</td><td class="sag">${konum} ${klasorDurumMetni()}</td></tr>
+<tr><td>Son yedek konumuna yazma</td><td class="sag">${saatMetni(Klasor.sonYazma)}</td></tr>
+<tr><td>Son elle indirilen yedek</td><td class="sag">${saatMetni(Kayit.sonIndirme)}</td></tr>
+<tr><td>Kayıtlar</td><td class="sag">${db.kartlar.length} kart · ${db.hr.length} hareket · ${db.log.length} günlük satırı</td></tr></tbody></table>
+<div class="satir">${Klasor.destek ? `<button class="btn pri" data-act="klasor-sec">📁 ${Klasor.h && Klasor.tur === 'klasor' ? 'Yedek klasörünü değiştir' : 'Yedek klasörü seç'}</button>` : ''}${Klasor.dosyaDestek ? '<button class="btn" data-act="dosya-sec">📄 Tek yedek dosyası seç</button>' : ''}${Klasor.durum === 'izin' ? '<button class="btn wr" data-act="klasor-izin">🔓 Konum iznini ver</button>' : ''}
+<button class="btn" data-act="yedek-simdi">💾 Şimdi yedekle</button><button class="btn" data-act="yedek-indir">⬇ Yedeği indir (JSON)</button><button class="btn" data-act="yedek-ac">⬆ Yedekten aç…</button></div>
+<ul class="yardim"><li><b>Klasör (önerilen):</b> seçince <code>stok_portal_guncel.json</code> her değişiklikte güncellenir; ayrıca <code>gunluk_*.json</code> (son 90 gün) ve <code>anlik_*.json</code> (saatlik, son 48) tutulur. <b>Tek dosya:</b> seçilen .json dosyası her değişiklikte üzerine yazılır (geçmiş tutulmaz).</li>
+<li>Konum bulunamazsa veya izin düşerse <b>veriler tarayıcıda tutulmaya devam eder</b>; üstte uyarı çıkar. Konum geri gelince (sürücü takılınca vb.) otomatik yeniden bağlanılır ve güncel yedek yazılır. Bu sırada "Yedeği indir" ile elle yedek alın.</li>
+<li>Windows/Chrome Masaüstü, Belgeler veya İndirilenler'in kendisini klasör olarak seçtirmez: içinde yeni bir klasör (ör. <code>StokYedek</code>) oluşturup onu seçin. Bulut senkronize klasör (OneDrive, Google Drive) veya USB iyi bir seçimdir.</li>
+<li>Chrome yeniden açıldığında konum iznini yeniden isteyebilir; bu durumda "İzin ver" düğmesi çıkar.</li>
+<li>Yedek dosyaları <b>şifrelenmez</b> (kullanıcı şifre özetleri ve günlük de içindedir); güvenli bir konumda tutun.</li></ul>
+<div id="yedek-liste"><p class="mut">Yedek listesi yükleniyor…</p></div></div>`;
+}
+
+function ayarSurum() {
+  const g = db.ayar.guncelleme || {}, y = SurumDenetim.yeni;
+  return `<div class="card"><h3>🆕 Sürüm</h3><table class="tbl mali"><tbody>
+<tr><td>Bu dosyanın sürümü</td><td class="sag"><b>${SURUM}</b></td></tr><tr><td>Verinin en son kullanıldığı sürüm</td><td class="sag">${esc(db.app || '—')}</td></tr><tr><td>Veri biçimi</td><td class="sag">v${db.v} (bu dosya: v${DB_SEMA})</td></tr>
+<tr><td>Son sürüm denetimi</td><td class="sag">${SurumDenetim.son ? saatMetni(SurumDenetim.son) : '—'}</td></tr></tbody></table>
+${y ? `<div class="ban wr"><span>🆕 Yeni sürüm: <b>${esc(y.surum)}</b>${y.tarih ? ' (' + esc(y.tarih) + ')' : ''}</span><button class="btn kucuk pri" data-act="surum-yeni">Ayrıntı ve güncelleme adımları</button></div>` : (SurumDenetim.son ? '<div class="ban ok"><span>✅ Güncel sürümü kullanıyorsunuz.</span></div>' : '')}
+${SurumDenetim.hata && !y ? `<p class="mut kucuk">${esc(SurumDenetim.hata)}</p>` : ''}
+<h3>Güncelleme kaynağı (isteğe bağlı)</h3><div class="satir"><label>GitHub deposu (kullanıcı/depo)<input id="ay-repo" value="${esc(g.repo || '')}" placeholder="ornek-kullanici/stok-portal" style="width:260px" autocomplete="off"></label>
+<label>Dal<input id="ay-dal" value="${esc(g.dal || 'main')}" style="width:90px"></label><button class="btn" data-act="guncelleme-kaydet">Kaydet</button><button class="btn pri" data-act="guncelleme-kontrol">Şimdi denetle</button></div>
+<p class="mut kucuk">Depo yazılırsa uygulama, internet varken açılışta depodaki <code>version.json</code> dosyasını okuyup yeni sürüm olup olmadığını bildirir. Çevrimdışıyken sessizce atlanır. Uygulama GitHub Pages'te yayınlanıyorsa aynı adresteki <code>version.json</code> da denetlenir.</p></div>
+<div class="card"><h3>Neler yeni?</h3>${DEGISIKLIKLER.map(d => `<h4>Sürüm ${d.s} <span class="mut">(${esc(d.t)})</span></h4><ul class="yardim">${d.n.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`).join('')}</div>`;
+}
+
+function rolMatrisi() {
+  return tablo([{ b: 'İzin', f: p => esc(IZIN_AD[p]) }, ...Object.entries(ROLLER).map(([k, r]) => ({ b: r.ad, c: 'sag', f: p => (r.izin.includes(p) ? '<span class="g">✓</span>' : '<span class="mut">—</span>') }))], Object.keys(IZIN_AD));
+}
+function ayarKullanici() {
+  const roller = `<div class="card"><h3>Roller ve yetkiler</h3>${rolMatrisi()}</div>`;
+  const uyari = '<div class="ban wr"><span>ℹ️ Bu uygulama sunucusuz çalışır: kullanıcı girişi, <b>aynı bilgisayarı paylaşan kişiler</b> için işlem takibi ve yetki ayrımıdır (kim ne yaptı, kim neyi görür). Teknik bilgisi olan biri yedek dosyasını açarak veya tarayıcı konsolundan verilere ulaşabilir; yedek dosyaları şifrelenmez. Gerçek güvenlik için bilgisayarın kendi kullanıcı hesabını ve disk şifrelemeyi de kullanın.</span></div>';
+  if (!authAktif()) {
+    const var_ = db.kullanicilar.length > 0;
+    return uyari + `<div class="card"><h3>🔒 Giriş koruması kapalı</h3><p>Şu an herkes uygulamayı kullanabilir ve işlemler "kullanıcısız" kaydedilir. ${var_ ? 'Daha önce tanımlı kullanıcılar var: yönetici bilgileriyle korumayı yeniden açabilirsiniz.' : 'Koruma açılınca ilk <b>yönetici</b> hesabı oluşturulur; sonra diğer kullanıcılar eklenir.'}</p>
+${var_ ? `<div class="satir"><label>Yönetici kullanıcı adı<input id="kg-kadi" autocomplete="off"></label><label>Şifre<input id="kg-sifre" type="password" autocomplete="off"></label><button class="btn pri" data-act="koruma-yeniden">Korumayı yeniden aç</button></div>` :
+      `<div class="satir"><label>Ad soyad<input id="kg-ad" autocomplete="off"></label><label>Kullanıcı adı<input id="kg-kadi" placeholder="ör. ahmet.y" autocomplete="off"></label><label>Şifre (en az ${SIFRE_MIN})<input id="kg-sifre" type="password" autocomplete="new-password"></label><label>Şifre (tekrar)<input id="kg-sifre2" type="password" autocomplete="new-password"></label><button class="btn pri" data-act="koruma-ac">Korumayı aç ve yönetici oluştur</button></div>
+<p class="mut kucuk">Oluşturma sonunda bir <b>kurtarma kodu</b> gösterilir (yalnızca bir kez). Yönetici şifresi unutulursa tek yol budur; güvenli bir yere yazın.</p>`}</div>` + roller;
+  }
+  const liste = db.kullanicilar.slice().sort((a, b) => a.kadi.localeCompare(b.kadi, 'tr'));
+  return uyari + `<div class="card"><h3>👥 Kullanıcılar</h3>${tablo([{ b: 'Kullanıcı', f: u => `<b>${esc(u.ad)}</b><div class="alt">${esc(u.kadi)}</div>` }, { b: 'Rol', f: u => esc(ROLLER[u.rol].ad) },
+    { b: 'Durum', f: u => (u.aktif === false ? chip('pasif', 'mut') : chip('aktif', 'ok')) + (u.zorla ? ' ' + chip('şifre değiştirecek', 'wr') : '') }, { b: 'Son giriş', f: u => saatMetni(u.sonGiris) },
+    { b: '', c: 'sag nowrap', f: u => sagBtn('kul-duzenle', u.id, '✏️', 'Düzenle') + sagBtn('kul-sifre', u.id, '🔑', 'Şifre sıfırla') }], liste)}</div>
+<div class="card"><h3>➕ Yeni kullanıcı</h3><div class="satir"><label>Ad soyad<input id="ku-ad" autocomplete="off"></label><label>Kullanıcı adı<input id="ku-kadi" placeholder="ör. ayse.k" autocomplete="off"></label>
+<label>Rol<select id="ku-rol">${rolSecenek('personel')}</select></label><label>Geçici şifre (en az ${SIFRE_MIN})<input id="ku-sifre" autocomplete="off"></label><button class="btn pri" data-act="kul-ekle">Ekle</button></div>
+<p class="mut kucuk">Kullanıcı ilk girişinde şifresini kendisi belirler. Kullanıcılar silinmez, pasifleştirilir (günlük ve kayıtlardaki izleri korunsun diye).</p></div>${roller}
+<div class="card"><h3>Giriş koruması</h3><div class="satir"><button class="btn dng" data-act="koruma-kapat">Korumayı kapat…</button></div><p class="mut kucuk">Kapatılırsa herkes her işlemi yapabilir; kullanıcı tanımları saklanır ve şifreyle yeniden açılabilir.</p></div>`;
+}
+
+function ayarGunluk() {
+  const L = ui.f.log, kadilar = [...new Set(db.log.map(l => l.kadi))].sort();
+  let rows = db.log.filter(l => (!L.bas || iso(new Date(l.ts)) >= L.bas) && (!L.bit || iso(new Date(l.ts)) <= L.bit) && (!L.kadi || l.kadi === L.kadi) && (!L.islem || l.islem === L.islem));
+  rows = rows.slice().sort((a, b) => b.ts - a.ts);
+  const filt = `<div class="satir"><label>Başlangıç<input type="date" data-set="log.bas" value="${L.bas}"></label><label>Bitiş<input type="date" data-set="log.bit" value="${L.bit}"></label>
+<label>Kullanıcı<select data-set="log.kadi">${secenek([['', 'Tümü'], ...kadilar.map(k => [k, k || '(kullanıcısız)'])], L.kadi)}</select></label>
+<label>İşlem<select data-set="log.islem">${secenek([['', 'Tümü'], ...Object.entries(LOG_AD)], L.islem)}</select></label>
+<label class="ara">Ara<input id="ara-lg" data-filtre="lg" placeholder="açıklamada ara…" autocomplete="off"></label><button class="btn" data-act="csv-log">⬇ Excel (CSV)</button></div>`;
+  return filt + `<div class="card">${rows.length ? tablo([{ b: 'Zaman', f: l => `<span class="nowrap">${saatMetni(l.ts)}</span>` }, { b: 'Kullanıcı', f: l => l.kadi ? `${esc(l.ad)}<div class="alt">${esc(l.kadi)} · ${esc(ROLLER[l.rol] ? ROLLER[l.rol].ad : l.rol)}</div>` : '<span class="mut">(kullanıcısız)</span>' },
+    { b: 'İşlem', f: l => chip(LOG_AD[l.islem] || l.islem, ['GIRIS_HATA', 'SIL'].includes(l.islem) ? 'wr' : '') }, { b: 'Açıklama', f: l => esc(l.aciklama) }], rows.slice(0, 500),
+    { id: 'tb-lg', attr: l => `data-ad="${esc(trLower(l.aciklama + ' ' + l.kadi + ' ' + (LOG_AD[l.islem] || l.islem)))}" data-grup="all"` }) +
+    (rows.length > 500 ? `<p class="mut kucuk">En yeni 500 satır gösteriliyor (${rows.length}). Süzgeçleri daraltın veya CSV'ye aktarın.</p>` : '') : bos('Bu süzgeçle günlük kaydı yok.')}
+<p class="mut kucuk">Günlük en fazla ${nf0.format(LOG_MAX)} satır tutulur${db.logKirpilan ? ` (şimdiye kadar ${nf0.format(db.logKirpilan)} eski satır kırpıldı)` : ''}. Günlük uygulama içinde silinemez; yedekler günlüğü de içerir. Günlük bir işlem takip kaydıdır; teknik olarak yedek dosyası düzenlenerek değiştirilebileceği için hukuki/güvenlik kanıtı olarak görülmemelidir.</p></div>`;
+}
+
 async function yedekListesiDoldur() {
   const el = $('yedek-liste'); if (!el) return;
   let html = '';
   try {
     if (Klasor.durum === 'tamam') {
       const l = await Klasor.listele();
-      html += `<h4>📁 Klasördeki yedekler</h4>${l.length ? tablo([{ b: 'Dosya', f: x => esc(x.ad) }, { b: 'Tarih', f: x => new Date(x.degisim).toLocaleString('tr-TR') }, { b: 'Boyut', c: 'sag', f: x => nf0.format(x.boyut / 1024) + ' KB' },
-        { b: '', f: x => `<button class="btn kucuk" data-act="yedek-klasor-yukle" data-id="${esc(x.ad)}">Geri yükle</button>` }], l.slice(0, 40)) : '<p class="mut">Klasörde yedek yok.</p>'}`;
+      html += `<h4>${Klasor.tur === 'dosya' ? '📄 Yedek dosyası' : '📁 Klasördeki yedekler'}</h4>${l.length ? tablo([{ b: 'Dosya', f: x => esc(x.ad) }, { b: 'Tarih', f: x => new Date(x.degisim).toLocaleString('tr-TR') }, { b: 'Boyut', c: 'sag', f: x => nf0.format(x.boyut / 1024) + ' KB' },
+        { b: '', f: x => `<button class="btn kucuk" data-act="yedek-klasor-yukle" data-id="${esc(x.ad)}">Geri yükle</button>` }], l.slice(0, 40)) : '<p class="mut">Konumda yedek yok.</p>'}`;
     }
     if (Depo.ok) {
       const l = await Depo.snapListe();
@@ -484,34 +583,39 @@ async function yedekListesiDoldur() {
         { b: '', f: x => `<button class="btn kucuk" data-act="yedek-snap-yukle" data-id="${x.ts}">Geri yükle</button>` }], l.slice(0, 30)) : '<p class="mut">Henüz görüntü yok (ilk değişiklikten sonra oluşur).</p>'}`;
     }
   } catch (e) { html += `<p class="mut">Liste okunamadı: ${esc(e.message || e)}</p>`; }
-  el.innerHTML = html || '<p class="mut">Yedek listesi için yedek klasörü seçin.</p>';
+  el.innerHTML = html || '<p class="mut">Yedek listesi için yedek konumu seçin.</p>';
 }
 
 // ============================ DURUM / BANNER / BİLDİRİM ============================
 function durumGuncelle() {
   const el = $('kayit-durum'); if (!el) return;
   let t, k = 'ok';
-  if (Kayit.eskiSekme) { t = '⚠️ Başka sekmede değişti'; k = 'er'; }
+  const y = Kayit.yedekDurumu();
+  if (db._yeni) { t = '⛔ Salt okunur'; k = 'er'; }
+  else if (Kayit.eskiSekme) { t = '⚠️ Başka sekmede değişti'; k = 'er'; }
   else if (Kayit.bekleyen) { t = '⏳ Kaydediliyor…'; k = 'wr'; }
   else {
     const z = Kayit.sonKayit || db.gun; const s = z ? new Date(z).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '';
-    t = '💾 Kaydedildi' + (s ? ' ' + s : '') + (Klasor.durum === 'tamam' ? ' · 📁 ✓' : Klasor.destek ? ' · 📁 ✗' : '');
-    if (Klasor.destek && Klasor.durum !== 'tamam') k = 'wr';
+    t = '💾 Kaydedildi' + (s ? ' ' + s : '');
+    if (y.kod === 'tamam') t += ` · ${Klasor.tur === 'dosya' ? '📄' : '📁'} yedek ✓`;
+    else { t += y.kod === 'kayip' ? ' · ⚠ yedek konumu yok' : ' · ⚠ yedek yok'; k = y.seviye === 'hata' ? 'er' : 'wr'; }
     if (Kayit.hata) k = 'er';
   }
-  el.textContent = t; el.className = 'durum ' + k; el.title = Kayit.hata || (Klasor.hata || '');
+  el.textContent = t; el.className = 'durum ' + k; el.title = Kayit.hata || Klasor.hata || '';
+  const ky = $('kul'); if (ky) { if (authAktif() && oturum) { ky.hidden = false; ky.textContent = `👤 ${oturum.ad} · ${ROLLER[oturum.rol] ? ROLLER[oturum.rol].ad : ''}`; } else ky.hidden = true; }
 }
 function bannerGuncelle() {
   const el = $('banner'); if (!el) return;
   const m = [];
+  if (db._yeni) m.push(['er', `⛔ Bu veri daha yeni bir sürümle kaydedilmiş (veri biçimi v${db.v}); bu dosya v${DB_SEMA} biçimini destekler. Verinizi bozmamak için kayıt kapatıldı. Güncel <code>index.html</code> dosyasını kullanın.`, '']);
   if (Kayit.eskiSekme) m.push(['er', 'Bu uygulama başka bir sekmede/pencerede de açık ve orada değişiklik yapıldı. Verilerin üzerine yazmamak için bu sekmede kayıt durduruldu.', '<button class="btn kucuk" data-act="yenile">Sayfayı yenile</button>']);
-  if (!Depo.ok && !Kayit.eskiSekme) m.push(['er', 'Tarayıcı veritabanı kullanılamıyor (' + esc(Depo.hata || 'bilinmeyen neden') + '). Veriler yalnızca geçici kopyada ve yedek dosyasında tutuluyor.', '']);
-  if (Klasor.destek && Klasor.durum === 'yok' && db.hr.length + db.kartlar.length > 0) m.push(['wr', '📁 Yedek klasörü seçilmedi: verileriniz yalnızca bu tarayıcıda. Otomatik yedek için bir klasör seçin.', '<button class="btn kucuk pri" data-act="klasor-sec">Klasör seç</button>']);
-  if (Klasor.durum === 'izin') m.push(['wr', '📁 Yedek klasörüne yazmak için tarayıcı izni gerekiyor.', '<button class="btn kucuk pri" data-act="klasor-izin">İzin ver</button>']);
-  if (Klasor.durum === 'hata') m.push(['er', '📁 Yedek klasörüne yazılamadı: ' + esc(Klasor.hata), '<button class="btn kucuk" data-act="klasor-sec">Klasörü yeniden seç</button>']);
-  if (!Klasor.destek && db.hr.length > 0) m.push(['wr', 'Bu tarayıcı klasöre otomatik yedek yazamaz. Chrome/Edge önerilir; en azından düzenli olarak Ayarlar → "Yedeği indir" yapın.', '<button class="btn kucuk" data-act="yedek-indir">Şimdi indir</button>']);
-  el.innerHTML = m.map(([k, t, b]) => `<div class="ban ${k}"><span>${t}</span>${b}</div>`).join('');
+  if (!Depo.ok && !Kayit.eskiSekme) m.push(['er', 'Tarayıcı veritabanı kullanılamıyor (' + esc(Depo.hata || 'bilinmeyen neden') + '). Veriler yalnızca geçici kopyada ve yedek konumunda tutuluyor.', '']);
+  const ym = yedekMesaj(); if (ym && !db._yeni) m.push([ym.s, ym.t, ym.b]);
+  if (SurumDenetim.yeni && izin('ayar')) m.push(['wr', `🆕 Yeni sürüm var: <b>${esc(SurumDenetim.yeni.surum)}</b> (sizde ${SURUM}).`, '<button class="btn kucuk pri" data-act="surum-yeni">Ayrıntı ve güncelleme</button>']);
+  if (ui.eskiDosya) m.push(['wr', `Bu dosya (sürüm ${SURUM}), verinin en son kullanıldığı sürümden (${esc(ui.eskiDosya)}) daha eski. Yeni özellikler eksik olabilir; güncel <code>index.html</code>'e geçin.`, '']);
+  el.innerHTML = m.map(([k, t, b]) => `<div class="ban ${k}"><span>${t}</span><span class="nowrap">${b}</span></div>`).join('');
 }
+
 function bildir(msg, tur) {
   const t = $('toast'); if (!t) return;
   const e = document.createElement('div'); e.className = 'ti ' + (tur || 'ok'); e.textContent = msg; t.appendChild(e);
@@ -542,7 +646,7 @@ const ACT = {
   aralik: el => { const A = ui.f.analiz, bu = bugun(), n = el.dataset.n; A.tum = n === 'tum'; if (n === 'tum') { A.bas = A.bit = ''; } else if (n === 'ay') { A.bas = bu.slice(0, 8) + '01'; A.bit = bu; } else { A.bas = gunEkle(bu, -(+n)); A.bit = bu; } render(); },
   // --- alış / satış / zayiat / sayım ---
   'alis-kaydet': () => {
-    const s = [...document.querySelectorAll('#tb-al tbody tr')].map(tr => ({ kart: +tr.dataset.kart, mik: sayiOku(tr.querySelector('[data-f=mik]').value), bm: sayiOku(tr.querySelector('[data-f=fy]').value) }));
+    const s = [...document.querySelectorAll('#tb-al tbody tr')].map(tr => ({ kart: +tr.dataset.kart, mik: sayiOku(tr.querySelector('[data-f=mik]').value), bm: tr.querySelector('[data-f=fy]') ? sayiOku(tr.querySelector('[data-f=fy]').value) : NaN }));
     if (sonuc(alisKaydet(val('al-t') || bugun(), s, val('al-not')))) render();
   },
   'satis-kaydet': () => {
@@ -624,13 +728,13 @@ const ACT = {
   'modal-kaydet': () => { if (modalGeri) modalGeri(); },
   'csv-hr': () => {
     const l = db.hr.slice().sort((a, b) => (a.t < b.t ? -1 : a.t > b.t ? 1 : a.id - b.id));
-    dosyaIndir(`hareketler_${zamanDamga()}.csv`, csvMetni(['Tarih', 'Ürün', 'Grup', 'Hareket', 'Yön', 'Miktar', 'Birim', 'Birim maliyet', 'Satış fiyatı', 'Neden', 'Not', 'Üretim kodu', 'Durum'],
+    dosyaIndir(`hareketler_${zamanDamga()}.csv`, csvMaliMetni(['Tarih', 'Ürün', 'Grup', 'Hareket', 'Yön', 'Miktar', 'Birim', 'Birim maliyet', 'Satış fiyatı', 'Neden', 'Not', 'Üretim kodu', 'Durum'],
       l.map(r => [r.t, kartAd(r.kart), K(r.kart) ? GRUP_KISA[K(r.kart).grup] : '', TIP_AD[r.tip], r.yon === 'G' ? 'gelen' : r.yon === 'C' ? 'giden' : 'fire', r.mik, kartBirim(r.kart), r.bm, r.fiyat ?? '', r.neden, r.not, r.kod, r.sil ? 'silindi' : ''])), 'text/csv;charset=utf-8');
   },
   'csv-stok': () => {
     const S = ui.f.stok, bu = bugun(); const bas = S.donem === 'bugun' ? bu : S.donem === 'hafta' ? gunEkle(bu, -6) : S.donem === 'ay' ? bu.slice(0, 8) + '01' : S.donem === 'aralik' ? S.bas : null, bit = S.donem === 'aralik' ? S.bit : (S.donem === 'tum' ? null : bu);
     const d = defter(bas || null, bit || null);
-    dosyaIndir(`stok_${zamanDamga()}.csv`, csvMetni(['Ürün', 'Kategori', 'Grup', 'Birim', 'Devir', 'Gelen', 'Satılan', 'Üretimde kullanılan', 'Diğer çıkış', 'Kalan', 'Ort. maliyet', 'Stok değeri', 'Takribi satış değeri', 'Asgari'],
+    dosyaIndir(`stok_${zamanDamga()}.csv`, csvMaliMetni(['Ürün', 'Kategori', 'Grup', 'Birim', 'Devir', 'Gelen', 'Satılan', 'Üretimde kullanılan', 'Diğer çıkış', 'Kalan', 'Ort. maliyet', 'Stok değeri', 'Takribi satış değeri', 'Asgari'],
       kartlarSirali().map(k => d.get(k.id)).map(x => [x.kart.ad, x.kart.kat, GRUP_KISA[x.kart.grup], x.kart.birim, x.devir, x.gelen, x.satilan, x.kullanilan, x.diger, x.kalan, x.ort, x.deger, x.takribi, x.kart.asgari])), 'text/csv;charset=utf-8');
   },
   // --- kartlar ---
@@ -675,26 +779,215 @@ const ACT = {
   'yedek-ac': () => $('dosya').click(),
   'yedek-klasor-yukle': async el => { const m = await Klasor.oku(el.dataset.id); yedekOnay(m, el.dataset.id); },
   'yedek-snap-yukle': async el => { const l = await Depo.snapListe(); const x = l.find(s => s.ts === +el.dataset.id); if (x) yedekOnay(x.json, new Date(x.ts).toLocaleString('tr-TR')); },
-  sifirla: () => onayla('Tüm verileri sil', 'Bütün kartlar ve hareketler silinecek. İşlemden hemen önce bir anlık görüntü alınır (Ayarlar → yedek listesinden geri yüklenebilir). Devam etmek için kutuya <b>SİL</b> yazın.', 'Onay', 'Hepsini sil',
-    async n => { if ((n || '').trim() !== 'SİL') return bildir('Onay metni yanlış; işlem yapılmadı.', 'er'); await Kayit.oncesi('Silme öncesi'); const f = db.firma, k = db.ayar.kar; db = bosDb(); db.firma = f; db.ayar.kar = k; degisti(); await Kayit.flush('zorla'); bildir('Tüm veriler silindi.'); render(); }),
+  sifirla: () => !izin('ayar') ? bildir('Bu işlem için yetkiniz yok.', 'er') : onayla('Tüm verileri sil', 'Bütün kartlar ve hareketler silinecek. İşlemden hemen önce bir anlık görüntü alınır (Ayarlar → yedek listesinden geri yüklenebilir). Devam etmek için kutuya <b>SİL</b> yazın.', 'Onay', 'Hepsini sil',
+    async n => { if ((n || '').trim() !== 'SİL') return bildir('Onay metni yanlış; işlem yapılmadı.', 'er'); await Kayit.oncesi('Silme öncesi'); const eskiDb = db; db = bosDb(); db.firma = eskiDb.firma; db.ayar = eskiDb.ayar; db.kullanicilar = eskiDb.kullanicilar; db.guvenlik = eskiDb.guvenlik; db.log = eskiDb.log; db.logKirpilan = eskiDb.logKirpilan; db.app = eskiDb.app; logYaz('YEDEK', 'Tüm stok verileri silindi'); degisti(); await Kayit.flush('zorla'); bildir('Tüm veriler silindi.'); render(); }),
 };
 function yedekOnay(metin, kaynak) {
+  if (!izin('ayar')) return bildir('Bu işlem için yetkiniz yok.', 'er');
   const c = yedekCoz(metin); if (c.hata) return bildir(c.hata, 'er');
-  onayla('Yedekten geri yükle', `<b>${esc(kaynak)}</b><br>${c.kart} kart · ${c.hr} hareket · son değişiklik ${c.gun ? new Date(c.gun).toLocaleString('tr-TR') : '—'}<br><br>Mevcut verilerin yerine geçecek. İşlemden önce mevcut durumun anlık görüntüsü alınır.`, '', 'Geri yükle',
+  onayla('Yedekten geri yükle', `<b>${esc(kaynak)}</b><br>${c.kart} kart · ${c.hr} hareket · son değişiklik ${c.gun ? new Date(c.gun).toLocaleString('tr-TR') : '—'} · sürüm ${esc(c.surum)}<br><br>Mevcut verilerin yerine geçecek (kullanıcı tanımları ve günlük de yedektekiyle değişir). İşlemden önce mevcut durumun anlık görüntüsü alınır.`, '', 'Geri yükle',
     async () => { await yedekUygula(c.o, kaynak); bildir('Yedek geri yüklendi.'); render(); });
 }
 
+// ---------- yetkiye göre gizleme (personel / izleyici maliyet, kâr, ciro görmez) ----------
+const MALI_BASLIK = ['Ort. maliyet', 'Son ort. maliyet', 'Stok değeri', 'Takribi satış değeri', 'Birim maliyet', 'Satış fiyatı', 'Değer', 'Girdi maliyeti', 'Tahmini tutar', 'Değer (maliyet)'];
+const MALI_TABLO = { 'tb-al': ['Ort. maliyet', 'Birim fiyat (₺)', 'Tutar'], 'tb-sa': ['Ort. maliyet', 'Takribi fiyat'], 'tb-za': ['Ort. maliyet', 'Kayıp değeri'] };
+function maskele() {
+  if (izin('mali')) return;
+  document.querySelectorAll('#app table.tbl').forEach(t => {
+    const liste = (t.id && MALI_TABLO[t.id]) || MALI_BASLIK;
+    t.querySelectorAll('tfoot').forEach(f => f.remove());
+    const idx = []; [...t.querySelectorAll('thead th')].forEach((th, i) => { if (liste.includes(th.textContent.trim())) idx.push(i); });
+    if (!idx.length) return;
+    t.querySelectorAll('tr').forEach(tr => { const c = [...tr.children].filter(x => x.tagName); idx.slice().reverse().forEach(i => { if (c[i]) c[i].remove(); }); });
+  });
+}
+const MALI_CSV = ['Birim maliyet', 'Satış fiyatı', 'Ort. maliyet', 'Stok değeri', 'Takribi satış değeri'];
+function csvMaliMetni(basliklar, satirlar) {
+  if (izin('mali')) return csvMetni(basliklar, satirlar);
+  const at = new Set(basliklar.map((b, i) => (MALI_CSV.includes(b) ? i : -1)).filter(i => i >= 0));
+  return csvMetni(basliklar.filter((_, i) => !at.has(i)), satirlar.map(s => s.filter((_, i) => !at.has(i))));
+}
+function panelBasit() {
+  const bu = bugun(), sd = stokDegerleri(), ky = uyarilar();
+  const bd = [...defter(bu, bu).values()].filter(x => x.kart.aktif !== false && (x.gelen || x.satilan || x.kullanilan || x.diger));
+  return baslik('🏠', esc(db.firma), 'Bugünün stok durumu.') +
+    `<div class="grid g4">${GRUPLAR.map(g => kpi(`${GRUP_IKON[g]} ${GRUP_AD[g]}`, `${sd[g].n} kalem stokta`, '')).join('')}${kpi('⚠️ Dikkat', ky.length + ' kart', 'asgari altı veya eksi stok')}</div>
+<div class="card"><h3>⚠️ Dikkat edilecekler</h3>${ky.length ? `<ul class="uyl">${ky.map(({ d, x }) => `<li>${durumChip(d)} <b>${esc(x.kart.ad)}</b> — kalan ${mikF(x.kalan)} ${esc(x.kart.birim)}${d === 'dusuk' ? ` (asgari ${mikF(x.kart.asgari)})` : ''}</li>`).join('')}</ul>` : '<p class="mut">Asgari seviyenin altında veya eksi stoklu kart yok. ✅</p>'}</div>
+<div class="card"><h3>Bugün (${trTarih(bu)}) — gelen / giden / kalan</h3>${bd.length ? tablo([{ b: 'Ürün', f: x => kartEtiket(x.kart) }, { b: 'Birim', f: x => esc(x.kart.birim) }, { b: 'Devir', c: 'sag', f: x => mikF(x.devir) },
+      { b: 'Gelen', c: 'sag', f: x => mikF(x.gelen) }, { b: 'Satılan', c: 'sag', f: x => mikF(x.satilan) }, { b: 'Üretimde kullanılan', c: 'sag', f: x => mikF(x.kullanilan) },
+      { b: 'Diğer çıkış', c: 'sag', f: x => mikF(x.diger) }, { b: 'Kalan', c: 'sag kalin', f: x => mikF(x.kalan) }], bd) : bos('Bugün henüz hareket yok.')}</div>`;
+}
+
+// ---------- sayfa yetkileri ----------
+const SAYFA_IZIN = { panel: 'gor', alis: 'giris', uretim: 'giris', satis: 'giris', zayiat: 'giris', stok: 'gor', hareket: 'gor', sayim: 'sayim', analiz: 'mali', kartlar: 'kart' };
+const sayfaIzni = k => (k === 'ayar' ? (izin('ayar') || izin('kullanici') || izin('log')) : izin(SAYFA_IZIN[k] || 'gor'));
+
+// ---------- kilit / giriş ekranı ----------
+function kilitGoster(mod, ek) {
+  const el = $('kilit'); if (!el) return;
+  $('app').innerHTML = ''; $('nav').innerHTML = ''; const k = $('kul'); if (k) k.hidden = true;
+  const ad = esc(db.firma), mesaj = '<div id="kg-msg" class="not er" hidden></div>';
+  let g = '';
+  if (mod === 'giris') g = `<h2>🔒 ${ad}</h2><p class="mut">Devam etmek için giriş yapın.</p><label>Kullanıcı adı<input id="kg-kadi" autocomplete="username"></label><label>Şifre<input id="kg-sifre" type="password" autocomplete="current-password"></label>${mesaj}
+<button class="btn pri blok" data-act="giris-yap">Giriş yap</button><button class="btn gh blok" data-act="kurtarma-ac">Şifremi unuttum (kurtarma kodu)</button>${ek || ''}`;
+  else if (mod === 'kurtarma') g = `<h2>🔑 Yönetici şifresini kurtar</h2><p class="mut">Giriş korumasını ilk açtığınızda gösterilen kurtarma kodunu girin.</p><label>Kurtarma kodu<input id="kr-kod" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" autocomplete="off"></label>
+<label>Yönetici kullanıcı adı<input id="kr-kadi" autocomplete="off"></label><label>Yeni şifre (en az ${SIFRE_MIN})<input id="kr-s1" type="password" autocomplete="new-password"></label><label>Yeni şifre (tekrar)<input id="kr-s2" type="password" autocomplete="new-password"></label>${mesaj}
+<button class="btn pri blok" data-act="kurtarma-yap">Şifreyi sıfırla</button><button class="btn gh blok" data-act="giris-geri">← Girişe dön</button>`;
+  else if (mod === 'zorla') g = `<h2>🔑 Yeni şifre belirleyin</h2><p class="mut">Geçici şifreyle girdiniz; devam etmeden önce kendi şifrenizi belirleyin.</p><label>Yeni şifre (en az ${SIFRE_MIN})<input id="zs-1" type="password" autocomplete="new-password"></label><label>Yeni şifre (tekrar)<input id="zs-2" type="password" autocomplete="new-password"></label>${mesaj}<button class="btn pri blok" data-act="zorla-kaydet">Şifreyi kaydet</button>`;
+  else if (mod === 'kod') g = `<h2>🧾 Kurtarma kodunuz</h2><p>Yönetici şifresi unutulursa <b>tek kurtarma yolu</b> bu koddur. <b>Yalnızca bir kez gösterilir.</b> Yazdırın veya güvenli bir yere not edin.</p><div class="kod">${esc(ek.kod)}</div>
+<button class="btn blok" data-act="kod-yazdir">🖨️ Yazdır</button><button class="btn pri blok" data-act="kod-tamam">Kodu kaydettim, devam</button>`;
+  else if (mod === 'yeniSurum') g = `<h2>⛔ Daha yeni sürümle kaydedilmiş veri</h2><p>Verileriniz <b>veri biçimi v${db.v}</b> ile kaydedilmiş; bu dosya yalnızca v${DB_SEMA} biçimini destekler (sürüm ${SURUM}). Verinizi bozmamak için bu dosya <b>veriye dokunmaz ve kayıt yapmaz</b>.</p><p>Çözüm: güncel <code>index.html</code> dosyasını indirip onunla açın.</p>`;
+  el.innerHTML = `<div class="kutu">${g}</div>`; el.hidden = false;
+  const ilk = el.querySelector('input'); if (ilk && ilk.focus) ilk.focus();
+}
+function kilitGizle() { const el = $('kilit'); if (el) { el.hidden = true; el.innerHTML = ''; } }
+const kilitMesaj = m => { const e = $('kg-msg'); if (e) { e.textContent = m; e.hidden = false; } };
+function girisSonrasi() { render(); if (ui.surumNotu) surumNotuGoster(); else yedekKapisi(); }
+function surumNotuGoster() {
+  const n = ui.surumNotu; ui.surumNotu = null; if (!n) return yedekKapisi();
+  const l = DEGISIKLIKLER.filter(d => surumKarsilastir(d.s, n.eski) > 0 && surumKarsilastir(d.s, n.yeni) <= 0);
+  modalGeri = null;
+  modal('🆕 Uygulama güncellendi', `<p>Sürüm <b>${esc(n.eski)}</b> → <b>${esc(n.yeni)}</b>. Verileriniz korundu; güncellemeden önce otomatik yedek (anlık görüntü) alındı.</p><h4>Neler yeni?</h4>${l.map(d => `<b>${esc(d.s)}</b><ul class="yardim">${d.n.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`).join('') || '<p class="mut">Ayrıntı yok.</p>'}`,
+    '<button class="btn pri" data-act="surum-tamam">Tamam</button>');
+}
+/** Yedek konumu seçilmemiş/bulunamadıysa açılışta (oturum başına bir kez) seçim penceresi. */
+function yedekKapisi() {
+  if (db._yeni) return;
+  const d = Kayit.yedekDurumu(); let atla = false; try { atla = !!sessionStorage.getItem('sos_gate'); } catch (e) { /* yoksay */ }
+  if (atla || d.kod === 'tamam' || d.kod === 'izin' || !izin('ayar')) return;
+  if (d.kod === 'desteklenmiyor' && !(db.hr.length + db.kartlar.length)) return;
+  const kayip = d.kod === 'kayip', hata = d.kod === 'hata', yok = d.kod === 'yok';
+  const baslikT = kayip ? '⚠️ Yedek konumu bulunamadı' : hata ? '⚠️ Yedek konumuna yazılamıyor' : yok ? '💾 Yedek konumu seçin' : '⚠️ Yedek alınamıyor';
+  const metin = kayip ? `Seçtiğiniz yedek konumu (“${esc(Klasor.ad)}”) silinmiş, taşınmış veya sürücüsü takılı değil. Verileriniz şu anda <b>yalnızca bu tarayıcıda</b> tutuluyor; yedek alınmıyor.`
+    : hata ? `Yedek konumuna yazılamadı: ${esc(Klasor.hata)}. Veriler şu an <b>yalnızca bu tarayıcıda</b>.`
+      : yok ? 'Verileriniz bu tarayıcıda saklanır; tarayıcı verisi silinirse veya bozulursa geri getirilemez. Bir <b>yedek klasörü</b> (önerilen) veya <b>tek yedek dosyası</b> seçin: seçtikten sonra <b>her değişiklik anında oraya yedeklenir</b>.'
+        : 'Bu tarayıcı yedek konumuna otomatik yazamaz (Chrome veya Edge gerekir). Verileriniz yalnızca bu tarayıcıda; düzenli olarak yedeği indirin.';
+  modalGeri = null;
+  modal(baslikT, `<p>${metin}</p><p class="mut kucuk">Konum seçilmezse veri tarayıcıda tutulmaya devam eder, ancak üstte uyarı görünür ve yedeksiz sekme kapatırken onay istenir.</p>`,
+    `${Klasor.destek ? '<button class="btn pri" data-act="klasor-sec">📁 Yedek klasörü seç</button>' : ''}${Klasor.dosyaDestek ? '<button class="btn" data-act="dosya-sec">📄 Tek dosya seç</button>' : ''}<button class="btn" data-act="yedek-indir">⬇ Yedeği indir</button><button class="btn gh" data-act="gate-atla">Şimdilik tarayıcıda tut</button>`);
+}
+function hesabimGoster() {
+  const u = oturum && db.kullanicilar.find(x => x.id === oturum.id); if (!u) return;
+  modalGeri = null;
+  modal('👤 Hesabım', `<table class="tbl mali"><tbody><tr><td>Ad</td><td class="sag">${esc(u.ad)}</td></tr><tr><td>Kullanıcı adı</td><td class="sag">${esc(u.kadi)}</td></tr><tr><td>Rol</td><td class="sag">${esc(ROLLER[u.rol].ad)}</td></tr><tr><td>Son giriş</td><td class="sag">${saatMetni(u.sonGiris)}</td></tr><tr><td>Sürüm</td><td class="sag">${SURUM}</td></tr></tbody></table>
+<h4>Şifre değiştir</h4><div class="mform"><label>Mevcut şifre<input id="hs-eski" type="password" autocomplete="current-password"></label><span></span><label>Yeni şifre (en az ${SIFRE_MIN})<input id="hs-yeni" type="password" autocomplete="new-password"></label><label>Yeni şifre (tekrar)<input id="hs-yeni2" type="password" autocomplete="new-password"></label></div>`,
+    '<button class="btn" data-act="modal-kapat">Kapat</button><button class="btn" data-act="sifre-degistir">Şifreyi değiştir</button><button class="btn dng" data-act="cikis">Çıkış yap</button>');
+}
+
+Object.assign(ACT, {
+  'giris-yap': async () => {
+    const r = await girisYap(val('kg-kadi'), val('kg-sifre')); if (!r.ok) return kilitMesaj(r.msg);
+    kilitGizle(); ui.sonEtkinlik = Date.now(); if (r.zorla) return kilitGoster('zorla'); girisSonrasi();
+  },
+  'kurtarma-ac': () => kilitGoster('kurtarma'), 'giris-geri': () => kilitGoster('giris'),
+  'kurtarma-yap': async () => {
+    if (val('kr-s1') !== val('kr-s2')) return kilitMesaj('Şifreler aynı değil.');
+    const r = await kurtarmaIleSifirla(val('kr-kod'), val('kr-kadi'), val('kr-s1')); if (!r.ok) return kilitMesaj(r.msg);
+    ui.yeniKod = r.kod; kilitGoster('kod', { kod: r.kod }); ui.kodSonra = 'giris';
+  },
+  'zorla-kaydet': async () => {
+    if (val('zs-1') !== val('zs-2')) return kilitMesaj('Şifreler aynı değil.');
+    const r = await sifreBelirle(val('zs-1'), ''); if (!r.ok) return kilitMesaj(r.msg); kilitGizle(); girisSonrasi();
+  },
+  'kod-yazdir': () => { $('rapor').innerHTML = `<h1>${esc(db.firma)} — Kurtarma kodu</h1><p>Yönetici şifresi unutulursa bu kod gerekir. Güvenli bir yerde saklayın.</p><p style="font-size:22px;letter-spacing:2px"><b>${esc(ui.yeniKod || '')}</b></p>`; document.body.classList.add('rp'); if (typeof window.print === 'function') window.print(); setTimeout(() => document.body.classList.remove('rp'), 1500); },
+  'kod-tamam': () => { ui.yeniKod = ''; if (ui.kodSonra === 'giris') { ui.kodSonra = ''; kilitGoster('giris'); } else { kilitGizle(); girisSonrasi(); } },
+  hesabim: () => hesabimGoster(),
+  'sifre-degistir': async () => {
+    if (val('hs-yeni') !== val('hs-yeni2')) return bildir('Yeni şifreler aynı değil.', 'er');
+    const r = await sifreDegistir(val('hs-eski'), val('hs-yeni')); if (sonuc(r)) $('dlg').close();
+  },
+  cikis: () => { $('dlg').close(); cikisYap(); ui.sayfa = 'panel'; kilitGoster('giris'); },
+  'koruma-ac': async () => {
+    if (val('kg-sifre') !== val('kg-sifre2')) return bildir('Şifreler aynı değil.', 'er');
+    const r = await korumayiEtkinlestir({ kadi: val('kg-kadi'), ad: val('kg-ad'), sifre: val('kg-sifre') }); if (!r.ok) return bildir(r.msg, 'er');
+    ui.yeniKod = r.kod; ui.kodSonra = ''; kilitGoster('kod', { kod: r.kod });
+  },
+  'koruma-yeniden': async () => { const r = await korumayiAc(val('kg-kadi'), val('kg-sifre')); if (sonuc(r, 'Giriş koruması açıldı.')) render(); },
+  'koruma-kapat': () => onayla('Giriş korumasını kapat', 'Kapatılırsa herkes her işlemi yapabilir. Onay için kendi şifrenizi yazın.', 'Şifreniz', 'Korumayı kapat', async n => { const r = await korumayiKapat(n || ''); if (sonuc(r, 'Giriş koruması kapatıldı.')) render(); }),
+  'kul-ekle': async () => { const r = await kullaniciEkle({ kadi: val('ku-kadi'), ad: val('ku-ad'), rol: val('ku-rol'), sifre: val('ku-sifre') }); if (sonuc(r)) render(); },
+  'kul-duzenle': el => {
+    const id = +el.dataset.id, u = db.kullanicilar.find(x => x.id === id); if (!u) return;
+    modalGeri = () => { const r = kullaniciGuncelle(id, { ad: val('kd-ad'), rol: val('kd-rol'), aktif: val('kd-aktif') === '1' }); if (sonuc(r)) { $('dlg').close(); render(); } };
+    modal(`Kullanıcıyı düzenle — ${esc(u.kadi)}`, `<div class="mform"><label>Ad soyad<input id="kd-ad" value="${esc(u.ad)}"></label><label>Rol<select id="kd-rol">${rolSecenek(u.rol)}</select></label><label>Durum<select id="kd-aktif">${secenek([['1', 'Aktif'], ['0', 'Pasif (giriş yapamaz)']], u.aktif === false ? '0' : '1')}</select></label></div>`,
+      '<button class="btn" data-act="modal-kapat">Vazgeç</button><button class="btn pri" data-act="modal-kaydet">Kaydet</button>');
+  },
+  'kul-sifre': el => {
+    const id = +el.dataset.id, u = db.kullanicilar.find(x => x.id === id); if (!u) return;
+    onayla('Şifre sıfırla', `<b>${esc(u.kadi)}</b> için yeni bir <b>geçici şifre</b> belirleyin; kullanıcı ilk girişte kendi şifresini belirleyecek.`, `Geçici şifre (en az ${SIFRE_MIN})`, 'Sıfırla', async n => { if (sonuc(await sifreSifirla(id, n || ''))) render(); });
+  },
+  'csv-log': () => {
+    const L = ui.f.log; const rows = db.log.filter(l => (!L.bas || iso(new Date(l.ts)) >= L.bas) && (!L.bit || iso(new Date(l.ts)) <= L.bit) && (!L.kadi || l.kadi === L.kadi) && (!L.islem || l.islem === L.islem));
+    dosyaIndir(`gunluk_${zamanDamga()}.csv`, csvMetni(['Zaman', 'Kullanıcı adı', 'Ad', 'Rol', 'İşlem', 'Açıklama'], rows.map(l => [new Date(l.ts).toLocaleString('tr-TR'), l.kadi, l.ad, l.rol, LOG_AD[l.islem] || l.islem, l.aciklama])), 'text/csv;charset=utf-8');
+  },
+  'ayar-kaydet': () => { if (sonuc(ayarKaydet(val('ay-firma'), sayiOku(val('ay-kar')), sayiOku(val('ay-kilit'))))) render(); },
+  'klasor-sec': async () => {
+    try { await Klasor.sec(); await Kayit.flush('zorla'); if ($('dlg').open) $('dlg').close(); logYaz('YEDEK', `Yedek klasörü seçildi: ${Klasor.ad}`); degisti(); bildir(`Yedek klasörü seçildi: ${Klasor.ad}. Her değişiklik artık anında oraya yazılacak.`); }
+    catch (e) { if (e.name !== 'AbortError') bildir('Klasör seçilemedi: ' + (e.message || e), 'er'); }
+    bannerGuncelle(); durumGuncelle(); render();
+  },
+  'dosya-sec': async () => {
+    try { await Klasor.dosyaSec(); await Kayit.flush('zorla'); if ($('dlg').open) $('dlg').close(); logYaz('YEDEK', `Yedek dosyası seçildi: ${Klasor.ad}`); degisti(); bildir(`Yedek dosyası seçildi: ${Klasor.ad}. Her değişiklik artık anında bu dosyaya yazılacak.`); }
+    catch (e) { if (e.name !== 'AbortError') bildir('Dosya seçilemedi: ' + (e.message || e), 'er'); }
+    bannerGuncelle(); durumGuncelle(); render();
+  },
+  'klasor-izin': async () => { await Klasor.izinVer(); if (Klasor.durum === 'tamam') { await Kayit.flush('zorla'); bildir('İzin verildi, yedek yazıldı.'); } else bildir('Konum hâlâ erişilemiyor: ' + (Klasor.hata || Klasor.durum), 'er'); bannerGuncelle(); durumGuncelle(); render(); },
+  'yedek-simdi': async () => {
+    Kayit.bekleyen = true; await Kayit.flush('zorla');
+    bildir(Kayit.hata ? Kayit.hata : (Klasor.durum === 'tamam' ? 'Yedek konuma ve tarayıcıya yazıldı.' : '⚠️ Yalnızca tarayıcı kaydı alındı; yedek konumu yok. Yedeği indirin.'), Kayit.hata || Klasor.durum !== 'tamam' ? 'er' : 'ok'); render();
+  },
+  'yedek-indir': () => { if (!izin('ayar')) return bildir('Bu işlem için yetkiniz yok.', 'er'); dosyaIndir(`stok_portal_yedek_${zamanDamga()}.json`, JSON.stringify(db)); Kayit.indirildi(); bildir('Yedek dosyası indirildi.'); bannerGuncelle(); durumGuncelle(); if (ui.sayfa === 'ayar') render(); },
+  'gate-atla': () => { try { sessionStorage.setItem('sos_gate', '1'); } catch (e) { /* yoksay */ } $('dlg').close(); bildir('⚠️ Yedek konumu seçilmedi: veriler yalnızca bu tarayıcıda tutuluyor. Üstteki uyarıdan istediğiniz zaman seçebilirsiniz.', 'er'); },
+  'surum-tamam': () => { $('dlg').close(); yedekKapisi(); },
+  'guncelleme-kaydet': () => {
+    if (!izin('ayar')) return bildir('Bu işlem için yetkiniz yok.', 'er');
+    const repo = val('ay-repo').trim(); if (repo && !/^[\w.-]+\/[\w.-]+$/.test(repo)) return bildir('Depo "kullanıcı/depo" biçiminde olmalı.', 'er');
+    db.ayar.guncelleme = { repo, dal: val('ay-dal').trim() || 'main' }; logYaz('AYAR', `Güncelleme kaynağı: ${repo || '(yok)'}`); degisti(); bildir('Güncelleme kaynağı kaydedildi.'); render();
+  },
+  'guncelleme-kontrol': async () => {
+    bildir('Sürüm denetleniyor…'); const r = await guncellemeKontrol();
+    bildir(r.ok ? (r.yeni ? `Yeni sürüm var: ${r.yeni.surum}` : 'Güncel sürümü kullanıyorsunuz.') : r.msg, r.ok ? 'ok' : 'er'); bannerGuncelle(); if (ui.sayfa === 'ayar') render();
+  },
+  'surum-yeni': () => {
+    const y = SurumDenetim.yeni; if (!y) return;
+    const g = db.ayar.guncelleme || {}, repoUrl = g.repo ? `https://github.com/${g.repo}` : '';
+    modalGeri = null;
+    modal(`🆕 Yeni sürüm ${esc(y.surum)}`, `<p>Sizde: <b>${SURUM}</b> → Yeni: <b>${esc(y.surum)}</b>${y.tarih ? ' (' + esc(y.tarih) + ')' : ''}</p>${(y.notlar && y.notlar.length) ? `<h4>Neler yeni?</h4><ul class="yardim">${y.notlar.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+<h4>Güncelleme adımları</h4><ol class="adim"><li><b>Önce yedek alın</b> (Ayarlar → Yedekleme → "Yedeği indir" veya "Şimdi yedekle").</li><li>Yeni <code>index.html</code> dosyasını edinin${repoUrl ? ` (<a href="${esc(repoUrl)}" target="_blank" rel="noopener">${esc(g.repo)}</a> deposunda <i>index.html → Raw → Farklı kaydet</i>)` : ''} ve eskisinin <b>üzerine yazın</b> (aynı yerden/aynı adresten açın).</li><li>Açınca verileriniz korunur; "Uygulama güncellendi" bildirimi ve neler yeni listesi çıkar.</li></ol>
+${y.kaynak === 'site' ? '<p class="mut kucuk">Bu uygulama bir web adresinden açılıyor: aşağıdaki düğme yedek alıp sayfayı yeniler (yenilenmezse Ctrl+F5).</p>' : ''}`,
+      `<button class="btn" data-act="modal-kapat">Kapat</button>${y.kaynak === 'site' ? '<button class="btn pri" data-act="surum-yenile">Yedek al ve sayfayı yenile</button>' : ''}`);
+  },
+  'surum-yenile': async () => { Kayit.bekleyen = true; await Kayit.flush('zorla'); location.reload(); },
+});
+
 function setPath(p, v) { const [a, b] = p.split('.'); if (b === undefined) ui.f[a] = v; else ui.f[a][b] = v; }
 function render() {
-  const p = SAYFA[ui.sayfa] ? ui.sayfa : 'panel';
-  $('nav').innerHTML = SAYFALAR.map(([k, i, t]) => `<a href="#${k}" class="${k === p ? 'on' : ''}">${i} <span>${t}</span></a>`).join('');
-  $('app').innerHTML = SAYFA[p]();
+  if (db._yeni) { kilitGoster('yeniSurum'); return; }
+  if (authAktif()) { if (!oturum || !oturumTazele()) { kilitGoster('giris'); return; } kilitGizle(); }
+  else { oturum = null; kilitGizle(); }
+  const izinli = SAYFALAR.filter(([k]) => sayfaIzni(k));
+  let p = SAYFA[ui.sayfa] && sayfaIzni(ui.sayfa) ? ui.sayfa : (izinli[0] ? izinli[0][0] : 'panel'); ui.sayfa = p;
+  $('nav').innerHTML = izinli.map(([k, i, t]) => `<a href="#${k}" class="${k === p ? 'on' : ''}">${i} <span>${t}</span></a>`).join('');
+  $('app').innerHTML = (p === 'panel' && !izin('mali') && db.kartlar.length) ? panelBasit() : SAYFA[p]();
+  maskele();
   $('firma').textContent = db.firma;
   document.title = db.firma + ' — Stok';
   document.querySelectorAll('[data-filtre]').forEach(e => filtreUygula(e.dataset.filtre));
   ({ alis: liveAlis, satis: liveSatis, zayiat: liveZayiat, uretim: liveUretim, sayim: liveSayim })[p]?.();
-  if (p === 'ayar') yedekListesiDoldur();
+  if (p === 'ayar' && ui.tab.ay === 'yedek') yedekListesiDoldur();
   durumGuncelle(); bannerGuncelle();
+}
+/** 20 sn'de bir: oturum kilidi, yedek konumu yeniden bağlanma/kayıp tespiti, yedeksiz çalışma hatırlatması. */
+async function periyodikKontrol() {
+  if (db._yeni) return;
+  if (authAktif() && oturum && Date.now() - ui.sonEtkinlik > (+db.ayar.kilitDk || 15) * 60e3) { cikisYap('kilit'); render(); return; }
+  if (Klasor.h) {
+    const once = Klasor.durum; await Klasor.kontrol();
+    if (once !== 'tamam' && Klasor.durum === 'tamam') { await Kayit.flush('zorla'); bildir('📁 Yedek konumuna yeniden bağlanıldı; güncel yedek yazıldı.'); }
+    else if (once === 'tamam' && Klasor.durum !== 'tamam') bildir('⚠️ Yedek konumu artık erişilemiyor! Veriler tarayıcıda tutuluyor ama yedek alınmıyor — yedeği indirin.', 'er');
+    if (once !== Klasor.durum) { bannerGuncelle(); durumGuncelle(); }
+  }
+  if (Kayit.yedeksizKapanis() && Date.now() - (ui.sonHatirlatma || 0) > 10 * 60e3) { ui.sonHatirlatma = Date.now(); bildir('⚠️ Verileriniz yalnızca bu tarayıcıda; yedek konumuna yazılmıyor. Ayarlar → Yedekleme veya "Yedeği indir" ile yedek alın.', 'er'); }
 }
 function olaylariBagla() {
   document.addEventListener('click', e => {
@@ -703,7 +996,7 @@ function olaylariBagla() {
   });
   document.addEventListener('input', e => {
     const t = e.target;
-    if (t.id === 'md-izahat') { const e = $('md-say'), n = t.value.trim().length; if (e) e.textContent = n >= IZAHAT_MIN ? `${n} karakter ✓` : `${n}/${IZAHAT_MIN} karakter`; return; }
+    if (t.id === 'md-izahat') { const m = $('md-say'), n = t.value.trim().length; if (m) m.textContent = n >= IZAHAT_MIN ? `${n} karakter ✓` : `${n}/${IZAHAT_MIN} karakter`; return; }
     if (t.dataset && t.dataset.filtre) return filtreUygula(t.dataset.filtre);
     const c = t.closest && t.closest('[data-live]');
     if (c) ({ alis: liveAlis, satis: liveSatis, zayiat: liveZayiat, uretim: liveUretim, sayim: liveSayim })[c.dataset.live]?.();
@@ -714,17 +1007,32 @@ function olaylariBagla() {
     if (t.closest && t.closest('#ur-g,#ur-c,#ur-y')) liveUretim();
     if (t.id === 'dosya' && t.files && t.files[0]) { const f = t.files[0]; const rd = new FileReader(); rd.onload = () => yedekOnay(rd.result, f.name); rd.readAsText(f); t.value = ''; }
   });
+  document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.closest && e.target.closest('#kilit')) { const b = $('kilit').querySelector('.pri'); if (b) b.click(); } });
+  ['click', 'keydown', 'input'].forEach(t => document.addEventListener(t, () => { ui.sonEtkinlik = Date.now(); }, true));
   window.addEventListener('hashchange', () => { ui.sayfa = (location.hash || '#panel').slice(1); render(); window.scrollTo(0, 0); });
-  window.addEventListener('beforeunload', () => Kayit.senkron());
+  window.addEventListener('beforeunload', e => { Kayit.senkron(); if (Kayit.yedeksizKapanis()) { e.preventDefault(); e.returnValue = ''; return ''; } });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { Kayit.senkron(); Kayit.flush(); } });
-  setInterval(() => { if (Klasor.durum === 'tamam') Klasor.izinKontrol().then(() => { durumGuncelle(); }); }, 60000);
+  setInterval(periyodikKontrol, 20000);
 }
 async function baslat() {
   olaylariBagla();
   await yukle();
+  ui.sonEtkinlik = Date.now();
+  if (db._yeni) { render(); return; }
+  if (db.app && surumKarsilastir(SURUM, db.app) > 0) {
+    ui.surumNotu = { eski: db.app, yeni: SURUM };
+    await Kayit.oncesi(`Sürüm güncellemesi öncesi (${db.app} → ${SURUM})`);
+    const e = db.app; db.app = SURUM; logYaz('SURUM', `Uygulama güncellendi: ${e} → ${SURUM}`); degisti();
+  } else if (db.app && surumKarsilastir(SURUM, db.app) < 0) ui.eskiDosya = db.app;
+  else if (!db.app) db.app = SURUM;
   ui.sayfa = (location.hash || '#panel').slice(1);
-  render();
+  if (authAktif()) {
+    if (!oturumGeriYukle()) { kilitGoster('giris'); }
+    else { const u = db.kullanicilar.find(x => x.id === oturum.id); if (u && u.zorla) kilitGoster('zorla'); else girisSonrasi(); }
+  } else girisSonrasi();
+  try { if (!sessionStorage.getItem('sos_sk')) { sessionStorage.setItem('sos_sk', '1'); guncellemeKontrol().then(() => { bannerGuncelle(); }); } } catch (e) { /* yoksay */ }
 }
+
 // ============================ ARAYÜZ BİTİŞ ============================
 if (typeof document !== 'undefined' && document.getElementById && document.getElementById('app')) baslat();
-globalThis.SOS = { SAYFA, ui, ACT, get db() { return db; }, set db(v) { db = v; } };
+globalThis.SOS = { SAYFA, ui, ACT, periyodikKontrol, yedekMesaj, maskele, render, get db() { return db; }, set db(v) { db = v; } };

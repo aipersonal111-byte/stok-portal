@@ -1,5 +1,13 @@
 # Sürüm geçmişi
 
+## 1.1.0
+- **Kullanıcı girişi ve roller** (Yönetici / Yetkili / Personel / İzleyici), isteğe bağlı; ilk kurulumda tek seferlik kurtarma kodu; PBKDF2 şifre saklama; 5 hatalı denemede geçici bekleme; hareketsizlikte otomatik kilit; zorunlu şifre değişikliği; son aktif yönetici koruması.
+- **Kayıt günlüğü** (kim, ne zaman, ne yaptı): giriş/çıkış/hatalı giriş, tüm stok işlemleri, düzenleme/silme/geri alma, kart, ayar, kullanıcı, yedek, sürüm. Hareket satırları kullanıcı adıyla işaretlenir.
+- **Personel ve izleyici için maliyet, kâr, ciro gizleme**; yetkisiz işlemler motorda da reddedilir.
+- **Yedek konumu:** klasör veya tek dosya seçimi; seçilmezse/bulunamazsa/izin düşerse veri tarayıcıda tutulur ve uyarılır (açılış penceresi, kalıcı banner, üst çubuk, 10 dk hatırlatma, yedeksiz kapatmada onay, "Yedeği indir"); konum geri gelince otomatik yeniden bağlanma.
+- **Sürüm güncelleme bildirimi:** yükseltme öncesi otomatik görüntü + "neler yeni"; daha yeni veri biçimini koruma; GitHub/`version.json` ile yeni sürüm denetimi.
+- Ayarlar sayfası sekmelere ayrıldı (Genel, Yedekleme, Sürüm, Kullanıcılar, Günlük). Veri biçimi v2 (eski v1 yedekler otomatik yükseltilir).
+
 ## 1.0.0
 İlk sürüm (tek dosyalık `index.html`).
 

@@ -1,0 +1,12 @@
+{
+  "surum": "1.1.0",
+  "tarih": "2026-11-13",
+  "dbSema": 2,
+  "notlar": [
+    "Kullanıcı girişi, roller (Yönetici / Yetkili / Personel / İzleyici) ve kayıt günlüğü (kim, ne zaman, ne yaptı)",
+    "Personel ve izleyici rollerinde maliyet, kâr ve ciro bilgileri gizlenir",
+    "Yedek konumu (klasör veya tek dosya) seçilmeli: seçilmezse, bulunamazsa veya izin düşerse uyarı verilir; yedeksiz kapatmada onay istenir",
+    "Sürüm güncelleme bildirimi: yeni sürüm açılınca \"neler yeni\", eski dosyanın yeni veriyi bozması engellenir, GitHub'dan yeni sürüm denetimi"
+  ],
+  "indir": "index.html"
+}

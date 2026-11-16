@@ -2,16 +2,23 @@
 //   node build.js          -> index.html üretir
 //   node build.js --check  -> index.html'in güncel olup olmadığını denetler (CI için)
 const fs = require('fs'), path = require('path');
-const parcalar = ['head.html', 'motor.js', 'depo.js', 'ui.js', 'tail.html'];
+const parcalar = ['head.html', 'surum.js', 'motor.js', 'kimlik.js', 'depo.js', 'ui.js', 'tail.html'];
 const cikti = parcalar.map(p => fs.readFileSync(path.join(__dirname, 'src', p), 'utf8')).join('');
 const betik = cikti.match(/<script>([\s\S]*)<\/script>/);
 try { new Function(betik[1]); } catch (e) { console.error('JavaScript sözdizimi hatası:', e.message); process.exit(1); }
-const hedef = path.join(__dirname, 'index.html');
+// version.json: uygulamanın "yeni sürüm var mı?" denetimi bunu okur (depoya commit edilir)
+const vm = require('vm'), bag = {};
+vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'src', 'surum.js'), 'utf8') + '\nglobalThis.R = { SURUM, DB_SEMA, DEGISIKLIKLER };', bag);
+const R = bag.R;
+const surumJson = JSON.stringify({ surum: R.SURUM, tarih: R.DEGISIKLIKLER[0].t, dbSema: R.DB_SEMA, notlar: R.DEGISIKLIKLER[0].n, indir: 'index.html' }, null, 2) + '\n';
+const hedef = path.join(__dirname, 'index.html'), hedefJson = path.join(__dirname, 'version.json');
+const oku = f => (fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : '');
 if (process.argv.includes('--check')) {
-  const mevcut = fs.existsSync(hedef) ? fs.readFileSync(hedef, 'utf8') : '';
-  if (mevcut !== cikti) { console.error('index.html güncel değil: "node build.js" çalıştırıp index.html dosyasını da commit edin.'); process.exit(1); }
-  console.log('index.html güncel.');
+  if (oku(hedef) !== cikti || oku(hedefJson) !== surumJson) { console.error('index.html / version.json güncel değil: "node build.js" çalıştırıp ikisini de commit edin.'); process.exit(1); }
+  const pj = JSON.parse(oku(path.join(__dirname, 'package.json')));
+  if (pj.version !== R.SURUM) { console.error(`package.json sürümü (${pj.version}) src/surum.js sürümüyle (${R.SURUM}) aynı olmalı.`); process.exit(1); }
+  console.log('index.html ve version.json güncel (sürüm ' + R.SURUM + ').');
 } else {
-  fs.writeFileSync(hedef, cikti);
-  console.log('index.html üretildi (' + cikti.length + ' bayt)');
+  fs.writeFileSync(hedef, cikti); fs.writeFileSync(hedefJson, surumJson);
+  console.log('index.html üretildi (' + cikti.length + ' karakter), version.json sürüm ' + R.SURUM);
 }

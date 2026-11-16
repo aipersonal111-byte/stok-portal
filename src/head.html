@@ -85,13 +85,17 @@ code{background:#eef1f6;padding:1px 6px;border-radius:5px;font-size:12px}
 textarea{resize:vertical}
 .izahat{white-space:pre-wrap;border:1px solid var(--ln);background:#fafbfd;border-radius:9px;padding:10px 12px}
 #rapor{display:none}
+#kilit{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}#kilit[hidden]{display:none}
+.kutu{background:#fff;border:1px solid var(--ln);border-radius:14px;padding:22px;width:min(420px,100%);display:flex;flex-direction:column;gap:10px;box-shadow:0 10px 40px rgba(0,0,0,.08)}.kutu h2{margin:0}
+.btn.blok{width:100%}.kod{font:700 20px/1.4 ui-monospace,Consolas,monospace;letter-spacing:2px;text-align:center;background:#f6f8fb;border:1px dashed #c7d0de;border-radius:10px;padding:14px}#kul{cursor:pointer;border-color:var(--ln)}
 .imza{display:flex;gap:60px;margin-top:40px}
 @media print{.top,#banner,#toast,.altbar,.btn,.ib,.tabs{display:none!important}body{background:#fff}.card{border:0}
 body.rp>*:not(#rapor){display:none!important}body.rp #rapor{display:block;padding:10px;font-size:12px}body.rp .tw{max-height:none;overflow:visible}body.rp .tbl th{position:static}}
 </style>
 </head>
 <body>
-<header class="top"><div class="logo">📊 <span id="firma">Stok Portal</span></div><nav id="nav"></nav><div id="kayit-durum" class="durum ok">⏳ Yükleniyor…</div></header>
+<header class="top"><div class="logo">📊 <span id="firma">Stok Portal</span></div><nav id="nav"></nav><button id="kul" class="durum ok" data-act="hesabim" hidden></button><div id="kayit-durum" class="durum ok">⏳ Yükleniyor…</div></header>
+<div id="kilit" hidden></div>
 <div id="banner"></div>
 <main id="app"><div class="bos">Yükleniyor…</div></main>
 <div id="toast"></div>

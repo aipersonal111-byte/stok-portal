@@ -9,7 +9,6 @@
    ===================================================================== */
 
 // ============================ MOTOR BAŞLA ============================
-const SURUM = '1.0.0';
 const EPS = 1e-9;
 const GRUPLAR = ['TICARI', 'HAM', 'MAMUL'];
 const GRUP_AD = { TICARI: 'Ticari / Perakende', HAM: 'Ham madde', MAMUL: 'Mamül' };
@@ -53,19 +52,53 @@ const trTarih = t => (t && t.length >= 10) ? `${t.slice(8, 10)}.${t.slice(5, 7)}
 let db = bosDb();
 let dv = 0;                       // veri sürümü (önbellek geçersiz kılma)
 const memo = new Map();
+/* ---------- roller ve yetkiler ---------- */
+const ROLLER = {
+  yonetici: { ad: 'Yönetici', izin: ['gor', 'giris', 'mali', 'duzelt', 'sayim', 'kart', 'ayar', 'kullanici', 'log'] },
+  yetkili: { ad: 'Yetkili', izin: ['gor', 'giris', 'mali', 'duzelt', 'sayim', 'kart', 'log'] },
+  personel: { ad: 'Personel', izin: ['gor', 'giris'] },
+  izleyici: { ad: 'İzleyici', izin: ['gor'] },
+};
+const IZIN_AD = { gor: 'Stok durumu ve hareketleri görme', giris: 'Alış / Üretim / Satış / Zayiat girişi', mali: 'Maliyet, kâr ve ciro bilgilerini görme',
+  duzelt: 'Hareket düzenleme / silme / geri alma, üretim ve sayım iptali', sayim: 'Stok sayımı', kart: 'Stok kartı yönetimi',
+  ayar: 'Ayarlar, yedekleme, geri yükleme, veri silme', kullanici: 'Kullanıcı yönetimi', log: 'Kayıt günlüğünü görme' };
+const LOG_MAX = 10000;
+let oturum = null;                                   // { id, kadi, ad, rol } — kimlik.js yönetir
+const authAktif = () => !!(db.guvenlik && db.guvenlik.aktif && db.kullanicilar.length);
+/** Giriş koruması kapalıysa herkes her şeyi yapabilir; açıksa yalnızca rolün izinleri geçerlidir. */
+const izin = p => !authAktif() || (!!oturum && !!ROLLER[oturum.rol] && ROLLER[oturum.rol].izin.includes(p));
+const yasak = () => ({ ok: false, msg: 'Bu işlem için yetkiniz yok.' });
+const aktifKadi = () => (oturum ? oturum.kadi : '');
+function logYaz(islem, aciklama, ayr) {
+  const e = { id: db.sayac++, ts: Date.now(), kadi: oturum ? oturum.kadi : '', ad: oturum ? oturum.ad : '', rol: oturum ? oturum.rol : '', islem, aciklama: String(aciklama || '') };
+  if (ayr) e.ayr = ayr;
+  db.log.push(e);
+  if (db.log.length > LOG_MAX) { const at = db.log.length - LOG_MAX + 1000; db.log.splice(0, at); db.logKirpilan = (db.logKirpilan || 0) + at; }
+}
+const ozetMetin = (rows, n = 4) => { const g = new Map(); for (const r of rows) g.set(r.kart, (g.get(r.kart) || 0) + r.mik);
+  const l = [...g.entries()].map(([k, v]) => `${kartAd(k)} ${mikF(v)}`); return l.slice(0, n).join(', ') + (l.length > n ? ` … (+${l.length - n})` : ''); };
 const memoize = (k, fn) => { if (!memo.has(k)) memo.set(k, fn()); return memo.get(k); };
 let kaydetKancasi = () => {};     // depolama katmanı bağlar
 function bosDb() {
-  return { v: 1, firma: 'İşletmem', ayar: { kar: 30 }, kartlar: [], hr: [], sayimlar: [], sayac: 1, gun: 0 };
+  return { v: DB_SEMA, app: SURUM, firma: 'İşletmem', ayar: { kar: 30, kilitDk: 15, guncelleme: { repo: '', dal: 'main' } }, kartlar: [], hr: [], sayimlar: [],
+    kullanicilar: [], guvenlik: { aktif: false }, log: [], logKirpilan: 0, sayac: 1, gun: 0 };
 }
 function degisti() { dv++; memo.clear(); kaydetKancasi(); }
 function dogrula(o) {
   if (!o || typeof o !== 'object' || !Array.isArray(o.kartlar) || !Array.isArray(o.hr)) return false;
-  o.ayar = Object.assign({ kar: 30 }, o.ayar || {});
+  o._yeni = (+o.v || 1) > DB_SEMA;          // bu uygulamadan daha yeni biçimde kaydedilmiş veri: değiştirilmemeli
+  o.ayar = Object.assign({ kar: 30, kilitDk: 15 }, o.ayar || {});
+  o.ayar.guncelleme = Object.assign({ repo: '', dal: 'main' }, o.ayar.guncelleme || {});
   o.firma = o.firma || 'İşletmem';
   o.sayimlar = Array.isArray(o.sayimlar) ? o.sayimlar : [];
-  o.sayac = Math.max(+o.sayac || 1, 1 + Math.max(0, ...o.kartlar.map(k => +k.id || 0), ...o.hr.map(r => +r.id || 0), ...o.sayimlar.map(s => +s.id || 0)));
+  o.kullanicilar = Array.isArray(o.kullanicilar) ? o.kullanicilar : [];
+  o.log = Array.isArray(o.log) ? o.log : [];
+  o.guvenlik = (o.guvenlik && typeof o.guvenlik === 'object') ? o.guvenlik : { aktif: false };
+  o.logKirpilan = +o.logKirpilan || 0;
+  o.sayac = Math.max(+o.sayac || 1, 1 + Math.max(0, ...o.kartlar.map(k => +k.id || 0), ...o.hr.map(r => +r.id || 0), ...o.sayimlar.map(s => +s.id || 0),
+    ...o.kullanicilar.map(u => +u.id || 0), ...o.log.map(l => +l.id || 0)));
   o.gun = +o.gun || 0;
+  if (!o._yeni) o.v = DB_SEMA;
   return true;
 }
 
@@ -148,15 +181,16 @@ function bozulur(once, sonra, idler) {
 }
 function satirYap(o) {
   return Object.assign({ id: db.sayac++, t: bugun(), kart: 0, yon: 'G', tip: 'ALIS', mik: 0, bm: 0, fiyat: null, oran: null,
-    kod: '', not: '', neden: '', sil: 0, silNeden: '', silTs: '', ts: Date.now() }, o);
+    kod: '', not: '', neden: '', sil: 0, silNeden: '', silTs: '', ts: Date.now(), kul: aktifKadi() }, o);
 }
-function islemUygula(yeni) {
+function islemUygula(yeni, logTip, logMetin) {
   if (yeni.some(r => r.yon === 'C')) {
     const idler = new Set(yeni.map(r => r.kart));
     const p = bozulur(aktif(), aktif().concat(yeni), idler);
     if (p.length) return { ok: false, msg: 'Stok yetersiz → ' + p.join(' | ') };
   }
   db.hr.push(...yeni);
+  if (logTip) logYaz(logTip, logMetin);
   degisti();
   return { ok: true };
 }
@@ -173,33 +207,41 @@ function kartKontrol(o, haricId) {
   return '';
 }
 function kartEkle(o) {
+  if (!izin('kart')) return yasak();
   const h = kartKontrol(o); if (h) return { ok: false, msg: h };
   const k = { id: db.sayac++, ad: o.ad.trim(), kat: (o.kat || '').trim(), grup: o.grup, birim: o.birim.trim(),
     asgari: gecerli(+o.asgari) ? +o.asgari : 0, kar: (o.kar === '' || o.kar == null || !isFinite(+o.kar)) ? null : +o.kar, aktif: true };
-  db.kartlar.push(k); degisti();
+  db.kartlar.push(k); logYaz('KART', `Kart eklendi: ${k.ad} (${GRUP_KISA[k.grup]}, ${k.birim})`); degisti();
   return { ok: true, id: k.id };
 }
 function kartGuncelle(id, o) {
+  if (!izin('kart')) return yasak();
   const k = db.kartlar.find(x => x.id === id); if (!k) return { ok: false, msg: 'Kart bulunamadı.' };
   const h = kartKontrol(o, id); if (h) return { ok: false, msg: h };
+  const once = `${k.ad} / ${GRUP_KISA[k.grup]} / ${k.birim} / asgari ${k.asgari} / kâr ${k.kar ?? 'genel'}`;
   Object.assign(k, { ad: o.ad.trim(), kat: (o.kat || '').trim(), grup: o.grup, birim: o.birim.trim(),
     asgari: gecerli(+o.asgari) ? +o.asgari : 0, kar: (o.kar === '' || o.kar == null || !isFinite(+o.kar)) ? null : +o.kar });
+  logYaz('KART', `Kart güncellendi: ${once} → ${k.ad} / ${GRUP_KISA[k.grup]} / ${k.birim} / asgari ${k.asgari} / kâr ${k.kar ?? 'genel'}`);
   degisti();
   return { ok: true };
 }
 const kartHareketVar = id => db.hr.some(r => r.kart === id);
 function kartSil(id) {
+  if (!izin('kart')) return yasak();
   if (kartHareketVar(id)) return { ok: false, msg: 'Bu kartın stok hareketi var; silinemez. Kullanmayacaksanız "Pasif yap" deyin.' };
+  logYaz('KART', 'Kart silindi: ' + kartAd(id));
   db.kartlar = db.kartlar.filter(k => k.id !== id); degisti();
   return { ok: true };
 }
 function kartPasif(id, pasif) {
+  if (!izin('kart')) return;
   const k = db.kartlar.find(x => x.id === id); if (!k) return;
-  k.aktif = !pasif; degisti();
+  k.aktif = !pasif; logYaz('KART', `Kart ${pasif ? 'pasif yapıldı' : 'aktif yapıldı'}: ${k.ad}`); degisti();
 }
 
 // ---------- alış ----------
 function alisKaydet(t, satirlar, not) {
+  if (!izin('giris')) return yasak();
   satirlar = satirlar.filter(x => gecerli(x.mik));
   if (!satirlar.length) return { ok: false, msg: 'Miktar girilmiş satır yok.' };
   let tahmini = 0;
@@ -208,19 +250,20 @@ function alisKaydet(t, satirlar, not) {
     if (!gecerli(bm)) { bm = canli(x.kart).ort; tahmini++; }
     return satirYap({ t, kart: x.kart, yon: 'G', tip: 'ALIS', mik: x.mik, bm, not });
   });
-  const r = islemUygula(yeni);
+  const r = islemUygula(yeni, 'ALIS', `${yeni.length} kalem alış: ${ozetMetin(yeni)}${not ? ' — ' + not : ''}`);
   return r.ok ? { ok: true, msg: `${yeni.length} kalem stoğa eklendi.` + (tahmini ? ` ${tahmini} kalemde fiyat girilmediği için mevcut ortalama maliyet kullanıldı.` : '') } : r;
 }
 
 // ---------- satış ----------
 function satisKaydet(t, satirlar, not) {
+  if (!izin('giris')) return yasak();
   satirlar = satirlar.filter(x => gecerli(x.mik));
   if (!satirlar.length) return { ok: false, msg: 'Miktar girilmiş satır yok.' };
   const yeni = satirlar.map(x => {
     const k = K(x.kart), c = canli(x.kart), f = gecerli(x.fiyat) ? x.fiyat : null;
     return satirYap({ t, kart: x.kart, yon: 'C', tip: 'SATIS', mik: x.mik, bm: c.ort, fiyat: f, oran: f == null ? karOrani(k) : null, not });
   });
-  const r = islemUygula(yeni);
+  const r = islemUygula(yeni, 'SATIS', `${yeni.length} kalem satış: ${ozetMetin(yeni)}`);
   return r.ok ? { ok: true, msg: `${yeni.length} kalem satıldı.` } : r;
 }
 /** Satış satırı geliri: girilen fiyat varsa gerçek, yoksa maliyet × (1+oran) takribi */
@@ -232,10 +275,11 @@ function satisGeliri(r) {
 
 // ---------- zayiat / ikram ----------
 function zayiatKaydet(t, satirlar, neden, not) {
+  if (!izin('giris')) return yasak();
   satirlar = satirlar.filter(x => gecerli(x.mik));
   if (!satirlar.length) return { ok: false, msg: 'Miktar girilmiş satır yok.' };
   const yeni = satirlar.map(x => satirYap({ t, kart: x.kart, yon: 'C', tip: 'ZAYIAT', mik: x.mik, bm: canli(x.kart).ort, neden, not }));
-  const r = islemUygula(yeni);
+  const r = islemUygula(yeni, 'ZAYIAT', `${neden}: ${ozetMetin(yeni)}`);
   return r.ok ? { ok: true, msg: `${yeni.length} kalem "${neden}" olarak stoktan düşüldü.` } : r;
 }
 
@@ -258,6 +302,7 @@ function uretimOnizle(girdiler, ciktilar, yanlar, fireManuel) {
     fazla: (ayni && M + Y - G > 0.001) ? M + Y - G : 0, stokHata };
 }
 function uretimKaydet(t, girdiler, ciktilar, yanlar, fireManuel, not) {
+  if (!izin('giris')) return yasak();
   const o = uretimOnizle(girdiler, ciktilar, yanlar, fireManuel);
   if (!o.girdiler.length) return { ok: false, msg: 'En az bir girdi (ham madde) ekleyin.' };
   if (!o.ciktilar.length) return { ok: false, msg: 'En az bir çıkan mamül ekleyin.' };
@@ -274,7 +319,7 @@ function uretimKaydet(t, girdiler, ciktilar, yanlar, fireManuel, not) {
     const ana = o.girdiler.reduce((a, x) => (x.mik > a.mik ? x : a), o.girdiler[0]);
     yeni.push(satirYap({ t, kart: ana.kart, yon: 'X', tip: 'FIRE', mik: o.fire, bm: (o.ayni && o.G > 0) ? o.maliyet / o.G : 0, kod, not }));
   }
-  const r = islemUygula(yeni);
+  const r = islemUygula(yeni, 'URETIM', `${kod}: girdi ${ozetMetin(yeni.filter(x => x.tip === 'URETIM_GIRDI'))} → mamül ${ozetMetin(yeni.filter(x => x.tip === 'URETIM_CIKTI'))}`);
   return r.ok ? { ok: true, msg: `Üretim kaydedildi (${kod}).`, kod } : r;
 }
 function uretimSeanslari() {
@@ -301,6 +346,7 @@ function uretimSeanslari() {
 /** satirlar: [{kart, sayilan, neden?}] — sayılan her kalem fişe yazılır; farklar "SAYIM" düzeltme hareketi olur.
     Fark olan her kalem için neden gerekir (satır nedeni, yoksa genel neden); fark varsa ayrıca yazılı izahat zorunludur. */
 function sayimKaydet(t, satirlar, not, genelNeden, izahat) {
+  if (!izin('sayim')) return yasak();
   const satirSeti = new Map();
   for (const x of satirlar) if (isFinite(x.sayilan) && x.sayilan >= 0 && K(x.kart)) satirSeti.set(x.kart, x);
   if (!satirSeti.size) return { ok: false, msg: 'Sayılan miktar girilmedi.' };
@@ -316,8 +362,8 @@ function sayimKaydet(t, satirlar, not, genelNeden, izahat) {
   const kod = 'SYM-' + new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14) + '-' + db.sayac;
   const rows = lines.filter(l => l.fark !== 0).map(l => satirYap({ t, kart: l.kart, yon: l.fark > 0 ? 'G' : 'C', tip: 'SAYIM', mik: Math.abs(l.fark), bm: l.bm,
     kod, neden: l.neden, not: not || '', sis: l.sis, say: l.say }));
-  db.sayimlar.push({ id: db.sayac++, kod, t, not: not || '', izahat, ts: Date.now(), satirlar: lines.map(l => ({ kart: l.kart, sis: l.sis, say: l.say, fark: l.fark, bm: l.bm, neden: l.neden })) });
-  db.hr.push(...rows); degisti();
+  db.sayimlar.push({ id: db.sayac++, kod, t, not: not || '', izahat, kul: aktifKadi(), ts: Date.now(), satirlar: lines.map(l => ({ kart: l.kart, sis: l.sis, say: l.say, fark: l.fark, bm: l.bm, neden: l.neden })) });
+  db.hr.push(...rows); logYaz('SAYIM', `${kod}: ${lines.length} kalem sayıldı, ${rows.length} kalemde fark düzeltildi`); degisti();
   return { ok: true, kod, fark: rows.length, msg: rows.length ? `Sayım fişi kaydedildi: ${lines.length} kalem sayıldı, ${rows.length} kalemde fark düzeltildi.` : `Sayım fişi kaydedildi: ${lines.length} kalem sayıldı, fark yok.` };
 }
 function sayimSeanslari() {
@@ -338,6 +384,7 @@ function genislet(ids, silindi) {
   return db.hr.filter(r => set.has(r.id) && !!r.sil === !!silindi);
 }
 function kayitSil(ids, neden) {
+  if (!izin('duzelt')) return yasak();
   if (!String(neden || '').trim()) return { ok: false, msg: 'Silme nedenini yazın.' };
   const hedef = genislet(ids, false);
   if (!hedef.length) return { ok: false, msg: 'Kayıt bulunamadı.' };
@@ -347,21 +394,35 @@ function kayitSil(ids, neden) {
   if (p.length) return { ok: false, msg: 'Silinemez, stok eksiye düşer → ' + p.join(' | ') };
   const ts = new Date().toISOString();
   for (const r of hedef) { r.sil = 1; r.silNeden = neden.trim(); r.silTs = ts; }
+  logYaz('SIL', `${hedef.length} kayıt silindi (${hedef[0].kod || TIP_AD[hedef[0].tip]}): ${ozetMetin(hedef)} — neden: ${neden.trim()}`);
   degisti();
   return { ok: true, msg: `${hedef.length} kayıt arşive taşındı.` };
 }
 function kayitGeriAl(ids) {
+  if (!izin('duzelt')) return yasak();
   const hedef = genislet(ids, true);
   if (!hedef.length) return { ok: false, msg: 'Kayıt bulunamadı.' };
   const kopya = hedef.map(r => Object.assign({}, r, { sil: 0 }));
   const p = bozulur(aktif(), aktif().concat(kopya), new Set(hedef.map(r => r.kart)));
   if (p.length) return { ok: false, msg: 'Geri alınamaz, stok eksiye düşer → ' + p.join(' | ') };
   for (const r of hedef) { r.sil = 0; r.silNeden = ''; r.silTs = ''; }
+  logYaz('GERI', `${hedef.length} kayıt geri alındı: ${ozetMetin(hedef)}`);
   degisti();
   return { ok: true, msg: `${hedef.length} kayıt geri alındı.` };
 }
+function ayarKaydet(firma, kar, kilitDk) {
+  if (!izin('ayar')) return yasak();
+  if (!isFinite(kar) || kar < 0) return { ok: false, msg: 'Kâr oranı 0 veya daha büyük bir sayı olmalı.' };
+  const eski = `${db.firma} / %${db.ayar.kar} / kilit ${db.ayar.kilitDk} dk`;
+  db.firma = String(firma || '').trim() || 'İşletmem'; db.ayar.kar = kar;
+  if (isFinite(kilitDk) && kilitDk >= 1 && kilitDk <= 480) db.ayar.kilitDk = Math.round(kilitDk);
+  logYaz('AYAR', `${eski} → ${db.firma} / %${db.ayar.kar} / kilit ${db.ayar.kilitDk} dk`);
+  degisti();
+  return { ok: true, msg: 'Ayarlar kaydedildi.' };
+}
 const duzenlenebilir = r => !r.kod && ['ALIS', 'SATIS', 'ZAYIAT'].includes(r.tip);
 function kayitDuzenle(id, o) {
+  if (!izin('duzelt')) return yasak();
   const r = db.hr.find(x => x.id === id && !x.sil);
   if (!r) return { ok: false, msg: 'Kayıt bulunamadı.' };
   if (!duzenlenebilir(r)) return { ok: false, msg: 'Bu kayıt türü düzenlenemez.' };
@@ -373,6 +434,7 @@ function kayitDuzenle(id, o) {
   const sonra = aktif().map(x => (x.id === id ? yeni : x));
   const p = bozulur(aktif(), sonra, new Set([r.kart]));
   if (p.length) return { ok: false, msg: 'Bu değişiklikle stok eksiye düşer → ' + p.join(' | ') };
+  logYaz('DUZENLE', `${TIP_AD[r.tip]} düzenlendi: ${kartAd(r.kart)} — miktar ${mikF(r.mik)}→${mikF(yeni.mik)}${r.tip === 'ALIS' ? `, birim fiyat ${fmt(r.bm)}→${fmt(yeni.bm)}` : ''}${r.tip === 'SATIS' ? `, fiyat ${r.fiyat ?? '—'}→${yeni.fiyat ?? '—'}` : ''}`);
   Object.assign(r, yeni); degisti();
   return { ok: true, msg: 'Kayıt güncellendi.' };
 }
