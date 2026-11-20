@@ -105,9 +105,14 @@ body.rp>*:not(#rapor){display:none!important}body.rp #rapor{display:block;paddin
 <script>
 'use strict';
 // Sürüm bilgisi. Yeni sürüm yayınlarken: SURUM, DEGISIKLIKLER, package.json ve CHANGELOG.md birlikte güncellenir.
-const SURUM = '3.1.2';
+const SURUM = '3.1.3';
+const VARSAYILAN_REPO = 'aipersonal111-byte/stok-portal';   // güncelleme denetimi bu depodaki version.json'a bakar; kullanıcı bir şey girmez
+const VARSAYILAN_DAL = 'main';
 const DB_SEMA = 2;           // veri biçimi sürümü: eski dosya, daha yeni biçimdeki veriyi bozmasın diye kontrol edilir
 const DEGISIKLIKLER = [
+  { s: '3.1.3', t: '2026-11-20', n: [
+    'Güncelleme deposu uygulamaya gömüldü (aipersonal111-byte/stok-portal): kullanıcının depo adı girmesi gerekmez, yeni sürüm denetimi kendiliğinden çalışır',
+  ] },
   { s: '3.1.2', t: '2026-11-20', n: [
     'Yeni sürüm uyarısına "Yeni sürümü indir ve güncelle" düğmesi eklendi: önce yedek alır, GitHub\'dan yeni index.html\'i indirir ve doğrular, eski dosyanın üzerine yazdırır (veya indirir)',
     'Sürüm numarası 3.1.2 olarak düzenlendi',
@@ -1057,7 +1062,7 @@ async function yedekUygula(o, etiket) {
 const SurumDenetim = { yeni: null, son: 0, hata: '' };
 /** GitHub'daki (ayarlanmışsa) veya aynı adresteki (Pages gibi http/https) version.json ile karşılaştırır. Çevrimdışıysa sessizce geçer. */
 async function guncellemeKontrol() {
-  const adresler = [], g = (db.ayar && db.ayar.guncelleme) || {};
+  const adresler = [], g0 = (db.ayar && db.ayar.guncelleme) || {}, g = { repo: g0.repo || VARSAYILAN_REPO, dal: g0.dal || VARSAYILAN_DAL };
   if (g.repo && /^[\w.-]+\/[\w.-]+$/.test(g.repo)) adresler.push({ url: `https://raw.githubusercontent.com/${g.repo}/${g.dal || 'main'}/version.json`, kaynak: 'github' });
   if (typeof location !== 'undefined' && /^https?:/.test(location.protocol)) { try { adresler.push({ url: new URL('version.json', location.href).href + '?t=' + Date.now(), kaynak: 'site' }); } catch (e) { /* yoksay */ } }
   if (!adresler.length || typeof fetch !== 'function') { SurumDenetim.hata = adresler.length ? 'Bu ortam ağ erişimini desteklemiyor.' : 'Güncelleme kaynağı tanımlı değil.'; return { ok: false, msg: SurumDenetim.hata }; }
@@ -1076,7 +1081,7 @@ async function guncellemeKontrol() {
 
 /** Yeni sürümün index.html'ini (GitHub raw veya aynı site) indirir ve doğru sürüm olduğunu denetler. */
 async function yeniSurumDosyasiAl() {
-  const y = SurumDenetim.yeni, g = (db.ayar && db.ayar.guncelleme) || {};
+  const y = SurumDenetim.yeni, g0 = (db.ayar && db.ayar.guncelleme) || {}, g = { repo: g0.repo || VARSAYILAN_REPO, dal: g0.dal || VARSAYILAN_DAL };
   if (!y) return { ok: false, msg: 'Yeni sürüm bilgisi yok; önce "Şimdi denetle" deyin.' };
   if (typeof fetch !== 'function') return { ok: false, msg: 'Bu ortam ağ erişimini desteklemiyor.' };
   const url = y.kaynak === 'github' ? `https://raw.githubusercontent.com/${g.repo}/${g.dal || 'main'}/${y.indir || 'index.html'}?t=${Date.now()}` : new URL(y.indir || 'index.html', location.href).href + '?t=' + Date.now();
@@ -1614,7 +1619,7 @@ function ayarSurum() {
 <tr><td>Son sürüm denetimi</td><td class="sag">${SurumDenetim.son ? saatMetni(SurumDenetim.son) : '—'}</td></tr></tbody></table>
 ${y ? `<div class="ban wr"><span>🆕 Yeni sürüm: <b>${esc(y.surum)}</b>${y.tarih ? ' (' + esc(y.tarih) + ')' : ''}</span><button class="btn kucuk pri" data-act="surum-yeni">Ayrıntı ve güncelleme adımları</button></div>` : (SurumDenetim.son ? '<div class="ban ok"><span>✅ Güncel sürümü kullanıyorsunuz.</span></div>' : '')}
 ${SurumDenetim.hata && !y ? `<p class="mut kucuk">${esc(SurumDenetim.hata)}</p>` : ''}
-<h3>Güncelleme kaynağı (isteğe bağlı)</h3><div class="satir"><label>GitHub deposu (kullanıcı/depo)<input id="ay-repo" value="${esc(g.repo || '')}" placeholder="ornek-kullanici/stok-portal" style="width:260px" autocomplete="off"></label>
+<h3>Güncelleme kaynağı (gelişmiş)</h3><div class="satir"><label>GitHub deposu (boşsa varsayılan: ${VARSAYILAN_REPO})<input id="ay-repo" value="${esc(g.repo || '')}" placeholder="${VARSAYILAN_REPO}" style="width:260px" autocomplete="off"></label>
 <label>Dal<input id="ay-dal" value="${esc(g.dal || 'main')}" style="width:90px"></label><button class="btn" data-act="guncelleme-kaydet">Kaydet</button><button class="btn pri" data-act="guncelleme-kontrol">Şimdi denetle</button></div>
 <p class="mut kucuk">Depo yazılırsa uygulama, internet varken açılışta depodaki <code>version.json</code> dosyasını okuyup yeni sürüm olup olmadığını bildirir. Çevrimdışıyken sessizce atlanır. Uygulama GitHub Pages'te yayınlanıyorsa aynı adresteki <code>version.json</code> da denetlenir.</p></div>
 <div class="card"><h3>Neler yeni?</h3>${DEGISIKLIKLER.map(d => `<h4>Sürüm ${d.s} <span class="mut">(${esc(d.t)})</span></h4><ul class="yardim">${d.n.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`).join('')}</div>`;
@@ -2040,7 +2045,7 @@ Object.assign(ACT, {
   },
   'surum-yeni': () => {
     const y = SurumDenetim.yeni; if (!y) return;
-    const g = db.ayar.guncelleme || {}, repoUrl = g.repo ? `https://github.com/${g.repo}` : '';
+    const g = { repo: (db.ayar.guncelleme || {}).repo || VARSAYILAN_REPO }, repoUrl = g.repo ? `https://github.com/${g.repo}` : '';
     modalGeri = null;
     modal(`🆕 Yeni sürüm ${esc(y.surum)}`, `<p>Sizde: <b>${SURUM}</b> → Yeni: <b>${esc(y.surum)}</b>${y.tarih ? ' (' + esc(y.tarih) + ')' : ''}</p>${(y.notlar && y.notlar.length) ? `<h4>Neler yeni?</h4><ul class="yardim">${y.notlar.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
 <h4>Güncelleme adımları</h4><ol class="adim"><li><b>Önce yedek alın</b> (Ayarlar → Yedekleme → "Yedeği indir" veya "Şimdi yedekle").</li><li>Yeni <code>index.html</code> dosyasını edinin${repoUrl ? ` (<a href="${esc(repoUrl)}" target="_blank" rel="noopener">${esc(g.repo)}</a> deposunda <i>index.html → Raw → Farklı kaydet</i>)` : ''} ve eskisinin <b>üzerine yazın</b> (aynı yerden/aynı adresten açın).</li><li>Açınca verileriniz korunur; "Uygulama güncellendi" bildirimi ve neler yeni listesi çıkar.</li></ol>

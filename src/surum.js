@@ -1,8 +1,13 @@
 'use strict';
 // Sürüm bilgisi. Yeni sürüm yayınlarken: SURUM, DEGISIKLIKLER, package.json ve CHANGELOG.md birlikte güncellenir.
-const SURUM = '3.1.2';
+const SURUM = '3.1.3';
+const VARSAYILAN_REPO = 'aipersonal111-byte/stok-portal';   // güncelleme denetimi bu depodaki version.json'a bakar; kullanıcı bir şey girmez
+const VARSAYILAN_DAL = 'main';
 const DB_SEMA = 2;           // veri biçimi sürümü: eski dosya, daha yeni biçimdeki veriyi bozmasın diye kontrol edilir
 const DEGISIKLIKLER = [
+  { s: '3.1.3', t: '2026-11-20', n: [
+    'Güncelleme deposu uygulamaya gömüldü (aipersonal111-byte/stok-portal): kullanıcının depo adı girmesi gerekmez, yeni sürüm denetimi kendiliğinden çalışır',
+  ] },
   { s: '3.1.2', t: '2026-11-20', n: [
     'Yeni sürüm uyarısına "Yeni sürümü indir ve güncelle" düğmesi eklendi: önce yedek alır, GitHub\'dan yeni index.html\'i indirir ve doğrular, eski dosyanın üzerine yazdırır (veya indirir)',
     'Sürüm numarası 3.1.2 olarak düzenlendi',

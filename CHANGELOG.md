@@ -1,5 +1,8 @@
 # Sürüm geçmişi
 
+## 3.1.3
+- **Güncelleme deposu gömüldü** (`aipersonal111-byte/stok-portal`, dal `main`): kullanıcının depo adı yazması gerekmez; Ayarlar → Sürüm'deki alan boşsa varsayılan kullanılır, doluysa o geçerli olur.
+
 ## 3.1.2
 - **Güncelleme düğmesi:** yeni sürüm uyarısında "Yeni sürümü indir ve güncelle" düğmesi. Önce yedek alır, GitHub'daki `index.html`'i indirip sürümünü doğrular, eski dosyanın üzerine yazdırır (desteklemeyen tarayıcıda indirir).
 - Sürüm numarası 3.1.2 olarak düzenlendi (önceki 1.1.0).

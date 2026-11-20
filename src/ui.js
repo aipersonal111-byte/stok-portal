@@ -524,7 +524,7 @@ function ayarSurum() {
 <tr><td>Son sürüm denetimi</td><td class="sag">${SurumDenetim.son ? saatMetni(SurumDenetim.son) : '—'}</td></tr></tbody></table>
 ${y ? `<div class="ban wr"><span>🆕 Yeni sürüm: <b>${esc(y.surum)}</b>${y.tarih ? ' (' + esc(y.tarih) + ')' : ''}</span><button class="btn kucuk pri" data-act="surum-yeni">Ayrıntı ve güncelleme adımları</button></div>` : (SurumDenetim.son ? '<div class="ban ok"><span>✅ Güncel sürümü kullanıyorsunuz.</span></div>' : '')}
 ${SurumDenetim.hata && !y ? `<p class="mut kucuk">${esc(SurumDenetim.hata)}</p>` : ''}
-<h3>Güncelleme kaynağı (isteğe bağlı)</h3><div class="satir"><label>GitHub deposu (kullanıcı/depo)<input id="ay-repo" value="${esc(g.repo || '')}" placeholder="ornek-kullanici/stok-portal" style="width:260px" autocomplete="off"></label>
+<h3>Güncelleme kaynağı (gelişmiş)</h3><div class="satir"><label>GitHub deposu (boşsa varsayılan: ${VARSAYILAN_REPO})<input id="ay-repo" value="${esc(g.repo || '')}" placeholder="${VARSAYILAN_REPO}" style="width:260px" autocomplete="off"></label>
 <label>Dal<input id="ay-dal" value="${esc(g.dal || 'main')}" style="width:90px"></label><button class="btn" data-act="guncelleme-kaydet">Kaydet</button><button class="btn pri" data-act="guncelleme-kontrol">Şimdi denetle</button></div>
 <p class="mut kucuk">Depo yazılırsa uygulama, internet varken açılışta depodaki <code>version.json</code> dosyasını okuyup yeni sürüm olup olmadığını bildirir. Çevrimdışıyken sessizce atlanır. Uygulama GitHub Pages'te yayınlanıyorsa aynı adresteki <code>version.json</code> da denetlenir.</p></div>
 <div class="card"><h3>Neler yeni?</h3>${DEGISIKLIKLER.map(d => `<h4>Sürüm ${d.s} <span class="mut">(${esc(d.t)})</span></h4><ul class="yardim">${d.n.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`).join('')}</div>`;
@@ -950,7 +950,7 @@ Object.assign(ACT, {
   },
   'surum-yeni': () => {
     const y = SurumDenetim.yeni; if (!y) return;
-    const g = db.ayar.guncelleme || {}, repoUrl = g.repo ? `https://github.com/${g.repo}` : '';
+    const g = { repo: (db.ayar.guncelleme || {}).repo || VARSAYILAN_REPO }, repoUrl = g.repo ? `https://github.com/${g.repo}` : '';
     modalGeri = null;
     modal(`🆕 Yeni sürüm ${esc(y.surum)}`, `<p>Sizde: <b>${SURUM}</b> → Yeni: <b>${esc(y.surum)}</b>${y.tarih ? ' (' + esc(y.tarih) + ')' : ''}</p>${(y.notlar && y.notlar.length) ? `<h4>Neler yeni?</h4><ul class="yardim">${y.notlar.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
 <h4>Güncelleme adımları</h4><ol class="adim"><li><b>Önce yedek alın</b> (Ayarlar → Yedekleme → "Yedeği indir" veya "Şimdi yedekle").</li><li>Yeni <code>index.html</code> dosyasını edinin${repoUrl ? ` (<a href="${esc(repoUrl)}" target="_blank" rel="noopener">${esc(g.repo)}</a> deposunda <i>index.html → Raw → Farklı kaydet</i>)` : ''} ve eskisinin <b>üzerine yazın</b> (aynı yerden/aynı adresten açın).</li><li>Açınca verileriniz korunur; "Uygulama güncellendi" bildirimi ve neler yeni listesi çıkar.</li></ol>

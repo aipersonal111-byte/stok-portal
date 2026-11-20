@@ -203,7 +203,7 @@ async function yedekUygula(o, etiket) {
 const SurumDenetim = { yeni: null, son: 0, hata: '' };
 /** GitHub'daki (ayarlanmışsa) veya aynı adresteki (Pages gibi http/https) version.json ile karşılaştırır. Çevrimdışıysa sessizce geçer. */
 async function guncellemeKontrol() {
-  const adresler = [], g = (db.ayar && db.ayar.guncelleme) || {};
+  const adresler = [], g0 = (db.ayar && db.ayar.guncelleme) || {}, g = { repo: g0.repo || VARSAYILAN_REPO, dal: g0.dal || VARSAYILAN_DAL };
   if (g.repo && /^[\w.-]+\/[\w.-]+$/.test(g.repo)) adresler.push({ url: `https://raw.githubusercontent.com/${g.repo}/${g.dal || 'main'}/version.json`, kaynak: 'github' });
   if (typeof location !== 'undefined' && /^https?:/.test(location.protocol)) { try { adresler.push({ url: new URL('version.json', location.href).href + '?t=' + Date.now(), kaynak: 'site' }); } catch (e) { /* yoksay */ } }
   if (!adresler.length || typeof fetch !== 'function') { SurumDenetim.hata = adresler.length ? 'Bu ortam ağ erişimini desteklemiyor.' : 'Güncelleme kaynağı tanımlı değil.'; return { ok: false, msg: SurumDenetim.hata }; }
@@ -222,7 +222,7 @@ async function guncellemeKontrol() {
 
 /** Yeni sürümün index.html'ini (GitHub raw veya aynı site) indirir ve doğru sürüm olduğunu denetler. */
 async function yeniSurumDosyasiAl() {
-  const y = SurumDenetim.yeni, g = (db.ayar && db.ayar.guncelleme) || {};
+  const y = SurumDenetim.yeni, g0 = (db.ayar && db.ayar.guncelleme) || {}, g = { repo: g0.repo || VARSAYILAN_REPO, dal: g0.dal || VARSAYILAN_DAL };
   if (!y) return { ok: false, msg: 'Yeni sürüm bilgisi yok; önce "Şimdi denetle" deyin.' };
   if (typeof fetch !== 'function') return { ok: false, msg: 'Bu ortam ağ erişimini desteklemiyor.' };
   const url = y.kaynak === 'github' ? `https://raw.githubusercontent.com/${g.repo}/${g.dal || 'main'}/${y.indir || 'index.html'}?t=${Date.now()}` : new URL(y.indir || 'index.html', location.href).href + '?t=' + Date.now();
