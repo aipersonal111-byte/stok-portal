@@ -509,7 +509,7 @@ ${m ? `<div class="ban ${m.s}"><span>${m.t}</span></div>` : `<div class="ban ok"
 <tr><td>Kayıtlar</td><td class="sag">${db.kartlar.length} kart · ${db.hr.length} hareket · ${db.log.length} günlük satırı</td></tr></tbody></table>
 <div class="satir">${Klasor.destek ? `<button class="btn pri" data-act="klasor-sec">📁 ${Klasor.h && Klasor.tur === 'klasor' ? 'Yedek klasörünü değiştir' : 'Yedek klasörü seç'}</button>` : ''}${Klasor.dosyaDestek ? '<button class="btn" data-act="dosya-sec">📄 Tek yedek dosyası seç</button>' : ''}${Klasor.durum === 'izin' ? '<button class="btn wr" data-act="klasor-izin">🔓 Konum iznini ver</button>' : ''}
 <button class="btn" data-act="yedek-simdi">💾 Şimdi yedekle</button><button class="btn" data-act="yedek-indir">⬇ Yedeği indir (JSON)</button><button class="btn" data-act="yedek-ac">⬆ Yedekten aç…</button></div>
-<ul class="yardim"><li><b>Klasör (önerilen):</b> seçince <code>stok_portal_guncel.json</code> her değişiklikte güncellenir; ayrıca <code>gunluk_*.json</code> (son 90 gün) ve <code>anlik_*.json</code> (saatlik, son 48) tutulur. <b>Tek dosya:</b> seçilen .json dosyası her değişiklikte üzerine yazılır (geçmiş tutulmaz).</li>
+<ul class="yardim"><li><b>Anlık yedek nedir?</b> O ana ait bir <i>fotoğraftır</i>: dosyadaki "İçerik" sütunu o andaki kart/hareket sayısını gösterir. En güncel veri <code>stok_portal_guncel.json</code> dosyasındadır; anlık/günlük dosyalar eski bir ana dönmek içindir. Geri yüklemeden önce İçerik sütununa bakın.</li><li><b>Klasör (önerilen):</b> seçince <code>stok_portal_guncel.json</code> her değişiklikte güncellenir; ayrıca <code>gunluk_*.json</code> (son 90 gün) ve <code>anlik_*.json</code> (saatlik, son 48) tutulur. <b>Tek dosya:</b> seçilen .json dosyası her değişiklikte üzerine yazılır (geçmiş tutulmaz).</li>
 <li>Konum bulunamazsa veya izin düşerse <b>veriler tarayıcıda tutulmaya devam eder</b>; üstte uyarı çıkar. Konum geri gelince (sürücü takılınca vb.) otomatik yeniden bağlanılır ve güncel yedek yazılır. Bu sırada "Yedeği indir" ile elle yedek alın.</li>
 <li>Windows/Chrome Masaüstü, Belgeler veya İndirilenler'in kendisini klasör olarak seçtirmez: içinde yeni bir klasör (ör. <code>StokYedek</code>) oluşturup onu seçin. Bulut senkronize klasör (OneDrive, Google Drive) veya USB iyi bir seçimdir.</li>
 <li>Chrome yeniden açıldığında konum iznini yeniden isteyebilir; bu durumda "İzin ver" düğmesi çıkar.</li>
@@ -574,12 +574,13 @@ async function yedekListesiDoldur() {
   try {
     if (Klasor.durum === 'tamam') {
       const l = await Klasor.listele();
-      html += `<h4>${Klasor.tur === 'dosya' ? '📄 Yedek dosyası' : '📁 Klasördeki yedekler'}</h4>${l.length ? tablo([{ b: 'Dosya', f: x => esc(x.ad) }, { b: 'Tarih', f: x => new Date(x.degisim).toLocaleString('tr-TR') }, { b: 'Boyut', c: 'sag', f: x => nf0.format(x.boyut / 1024) + ' KB' },
+      for (const x of l.slice(0, 15)) { try { const c = yedekCoz(await Klasor.oku(x.ad)); x.ic = c.hata ? '—' : `${c.kart} kart · ${c.hr} hareket`; } catch (e) { x.ic = '—'; } }
+      html += `<h4>${Klasor.tur === 'dosya' ? '📄 Yedek dosyası' : '📁 Klasördeki yedekler'}</h4>${l.length ? tablo([{ b: 'Dosya', f: x => esc(x.ad) }, { b: 'Tarih', f: x => new Date(x.degisim).toLocaleString('tr-TR') }, { b: 'İçerik', f: x => esc(x.ic || '—') }, { b: 'Boyut', c: 'sag', f: x => nf0.format(x.boyut / 1024) + ' KB' },
         { b: '', f: x => `<button class="btn kucuk" data-act="yedek-klasor-yukle" data-id="${esc(x.ad)}">Geri yükle</button>` }], l.slice(0, 40)) : '<p class="mut">Konumda yedek yok.</p>'}`;
     }
     if (Depo.ok) {
       const l = await Depo.snapListe();
-      html += `<h4>🌐 Tarayıcı içi anlık görüntüler</h4>${l.length ? tablo([{ b: 'Zaman', f: x => new Date(x.ts).toLocaleString('tr-TR') }, { b: 'Tür', f: x => esc(x.etiket) }, { b: 'Boyut', c: 'sag', f: x => nf0.format(x.boyut / 1024) + ' KB' },
+      html += `<h4>🌐 Tarayıcı içi anlık görüntüler</h4>${l.length ? tablo([{ b: 'Zaman', f: x => new Date(x.ts).toLocaleString('tr-TR') }, { b: 'Tür', f: x => esc(x.etiket) }, { b: 'İçerik', f: x => { try { const c = yedekCoz(x.json); return c.hata ? '—' : `${c.kart} kart · ${c.hr} hareket`; } catch (e) { return '—'; } } }, { b: 'Boyut', c: 'sag', f: x => nf0.format(x.boyut / 1024) + ' KB' },
         { b: '', f: x => `<button class="btn kucuk" data-act="yedek-snap-yukle" data-id="${x.ts}">Geri yükle</button>` }], l.slice(0, 30)) : '<p class="mut">Henüz görüntü yok (ilk değişiklikten sonra oluşur).</p>'}`;
     }
   } catch (e) { html += `<p class="mut">Liste okunamadı: ${esc(e.message || e)}</p>`; }
@@ -1027,7 +1028,7 @@ function olaylariBagla() {
   ['click', 'keydown', 'input'].forEach(t => document.addEventListener(t, () => { ui.sonEtkinlik = Date.now(); }, true));
   window.addEventListener('hashchange', () => { ui.sayfa = (location.hash || '#panel').slice(1); render(); window.scrollTo(0, 0); });
   window.addEventListener('beforeunload', e => { Kayit.senkron(); if (Kayit.yedeksizKapanis()) { e.preventDefault(); e.returnValue = ''; return ''; } });
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { Kayit.senkron(); Kayit.flush(); } });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { Kayit.senkron(); Kayit.flush('kapanis'); } });
   setInterval(periyodikKontrol, 20000);
 }
 /** Başlangıçta beklenmedik hata olursa sonsuz "Yükleniyor" yerine nedeni gösterir. */

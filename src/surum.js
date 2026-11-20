@@ -1,10 +1,15 @@
 'use strict';
 // Sürüm bilgisi. Yeni sürüm yayınlarken: SURUM, DEGISIKLIKLER, package.json ve CHANGELOG.md birlikte güncellenir.
-const SURUM = '3.1.5';
+const SURUM = '3.1.6';
 const VARSAYILAN_REPO = 'aipersonal111-byte/stok-portal';   // güncelleme denetimi bu depodaki version.json'a bakar; kullanıcı bir şey girmez
 const VARSAYILAN_DAL = 'main';
 const DB_SEMA = 2;           // veri biçimi sürümü: eski dosya, daha yeni biçimdeki veriyi bozmasın diye kontrol edilir
 const DEGISIKLIKLER = [
+  { s: '3.1.6', t: '2026-11-20', n: [
+    'Yedek listelerinde her yedeğin içeriği (kart / hareket sayısı) gösterilir: boş veya eski bir anlık görüntüyü yanlışlıkla geri yüklemek zorlaşır',
+    'Sekme gizlenirken/kapanırken (son anlıktan 10 dakika geçmişse) anlık yedek de alınır; böylece anlık dosyalar oturumun başındaki eski hâli değil sonuna yakın hâli tutar',
+    'Yedek ekranına "Anlık yedek nedir?" açıklaması eklendi',
+  ] },
   { s: '3.1.5', t: '2026-11-20', n: [
     'Chrome/Edge adres çubuğunda "Yükle" düğmesi: uygulama bilgisayara kurulabilir (kendi penceresi ve simgesi), internetsiz açılır',
     'Web adresinden/yüklü uygulamadan açılınca güncelleme tek düğmeyle yapılır (yedek al + yenile); dosya indirmek gerekmez',

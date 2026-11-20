@@ -1,6 +1,6 @@
 {
   "name": "stok-portal",
-  "version": "3.1.5",
+  "version": "3.1.6",
   "private": true,
   "description": "Tek dosyalık, çevrimdışı stok takip uygulaması (gelen / giden / kalan, üretim, takribi maliyet ve kâr, kullanıcı rolleri, günlük, otomatik yedek)",
   "scripts": {

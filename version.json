@@ -1,10 +1,11 @@
 {
-  "surum": "3.1.5",
+  "surum": "3.1.6",
   "tarih": "2026-11-20",
   "dbSema": 2,
   "notlar": [
-    "Chrome/Edge adres çubuğunda \"Yükle\" düğmesi: uygulama bilgisayara kurulabilir (kendi penceresi ve simgesi), internetsiz açılır",
-    "Web adresinden/yüklü uygulamadan açılınca güncelleme tek düğmeyle yapılır (yedek al + yenile); dosya indirmek gerekmez"
+    "Yedek listelerinde her yedeğin içeriği (kart / hareket sayısı) gösterilir: boş veya eski bir anlık görüntüyü yanlışlıkla geri yüklemek zorlaşır",
+    "Sekme gizlenirken/kapanırken (son anlıktan 10 dakika geçmişse) anlık yedek de alınır; böylece anlık dosyalar oturumun başındaki eski hâli değil sonuna yakın hâli tutar",
+    "Yedek ekranına \"Anlık yedek nedir?\" açıklaması eklendi"
   ],
   "indir": "index.html"
 }

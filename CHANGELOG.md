@@ -1,5 +1,9 @@
 # Sürüm geçmişi
 
+## 3.1.6
+- **Yedek listelerinde içerik sütunu** (kart/hareket sayısı); anlık yedeğin ne olduğu açıklandı.
+- **Kapanışta anlık yedek:** sekme gizlenirken son anlıktan 10 dk geçmişse anlık dosya da yazılır (eskiden ilk değişiklikten sonra saatte bir yazılıyordu).
+
 ## 3.1.5
 - **Kurulabilir uygulama (PWA):** `manifest.webmanifest`, `sw.js` ve `icons/` eklendi; Chrome/Edge adres çubuğunda "Yükle" çıkar, uygulama kendi penceresinde ve internetsiz açılır. Veriler aynı adreste kaldığı için kaybolmaz.
 - Web adresinden açılınca güncelleme düğmesi yedek alıp sayfayı yeniler (dosya indirmek gerekmez).

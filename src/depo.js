@@ -84,7 +84,7 @@ const Klasor = {
     const l = (await this.listele()).filter(x => x.ad.startsWith(onek));
     for (const x of l.slice(tut)) { try { await this.h.removeEntry(x.ad); } catch (e) { /* yoksay */ } }
   },
-  async yaz(json, zorla) {
+  async yaz(json, zorla, kapanis) {
     if (this.durum !== 'tamam') return false;
     try {
       if (this.tur === 'dosya') await this.dosyaYaz(null, json);
@@ -92,7 +92,7 @@ const Klasor = {
         const d = new Date(), gun = iso(d).replace(/-/g, ''), hm = String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
         await this.dosyaYaz('stok_portal_guncel.json', json);
         if (zorla || Date.now() - this._gunluk > 5 * 60e3) { await this.dosyaYaz(`gunluk_${gun}.json`, json); this._gunluk = Date.now(); await this.temizle('gunluk_', 90); }
-        if (zorla || Date.now() - this._anlik > 60 * 60e3) { await this.dosyaYaz(`anlik_${gun}_${hm}.json`, json); this._anlik = Date.now(); await this.temizle('anlik_', 48); }
+        if (zorla || Date.now() - this._anlik > (kapanis ? 10 : 60) * 60e3) { await this.dosyaYaz(`anlik_${gun}_${hm}.json`, json); this._anlik = Date.now(); await this.temizle('anlik_', 48); }
       }
       this.sonYazma = Date.now(); this.hata = '';
       try { if (Depo.ok) await Depo.kvKoy('sonYazma', this.sonYazma); } catch (e) { /* yoksay */ }
@@ -135,7 +135,7 @@ const Kayit = {
         }
       } catch (e) { hata = 'Tarayıcı kaydı yazılamadı: ' + (e.message || e); }
     } else hata = 'Tarayıcı veritabanı yok; yalnızca yedek konumu/dosya yedeği geçerli.';
-    if (Klasor.durum === 'tamam') { if (await Klasor.yaz(json, neden === 'zorla')) this.kirli = false; }
+    if (Klasor.durum === 'tamam') { if (await Klasor.yaz(json, neden === 'zorla', neden === 'kapanis')) this.kirli = false; }
     this.hata = hata; this.sonKayit = Date.now();
     try { if (bc) bc.postMessage({ gun: db.gun }); } catch (e) { /* yoksay */ }
     durumGuncelle(); bannerGuncelle();
