@@ -1,10 +1,14 @@
 'use strict';
 // Sürüm bilgisi. Yeni sürüm yayınlarken: SURUM, DEGISIKLIKLER, package.json ve CHANGELOG.md birlikte güncellenir.
-const SURUM = '3.1.4';
+const SURUM = '3.1.5';
 const VARSAYILAN_REPO = 'aipersonal111-byte/stok-portal';   // güncelleme denetimi bu depodaki version.json'a bakar; kullanıcı bir şey girmez
 const VARSAYILAN_DAL = 'main';
 const DB_SEMA = 2;           // veri biçimi sürümü: eski dosya, daha yeni biçimdeki veriyi bozmasın diye kontrol edilir
 const DEGISIKLIKLER = [
+  { s: '3.1.5', t: '2026-11-20', n: [
+    'Chrome/Edge adres çubuğunda "Yükle" düğmesi: uygulama bilgisayara kurulabilir (kendi penceresi ve simgesi), internetsiz açılır',
+    'Web adresinden/yüklü uygulamadan açılınca güncelleme tek düğmeyle yapılır (yedek al + yenile); dosya indirmek gerekmez',
+  ] },
   { s: '3.1.4', t: '2026-11-20', n: [
     'Açılışta tarayıcı çağrılarından biri takılsa bile uygulama "Yükleniyor" ekranında kalmaz (zaman aşımı); beklenmedik hata olursa nedeni ekranda gösterilir',
   ] },

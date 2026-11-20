@@ -1,9 +1,10 @@
 {
-  "surum": "3.1.4",
+  "surum": "3.1.5",
   "tarih": "2026-11-20",
   "dbSema": 2,
   "notlar": [
-    "Açılışta tarayıcı çağrılarından biri takılsa bile uygulama \"Yükleniyor\" ekranında kalmaz (zaman aşımı); beklenmedik hata olursa nedeni ekranda gösterilir"
+    "Chrome/Edge adres çubuğunda \"Yükle\" düğmesi: uygulama bilgisayara kurulabilir (kendi penceresi ve simgesi), internetsiz açılır",
+    "Web adresinden/yüklü uygulamadan açılınca güncelleme tek düğmeyle yapılır (yedek al + yenile); dosya indirmek gerekmez"
   ],
   "indir": "index.html"
 }

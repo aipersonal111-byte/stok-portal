@@ -1,5 +1,9 @@
 # Sürüm geçmişi
 
+## 3.1.5
+- **Kurulabilir uygulama (PWA):** `manifest.webmanifest`, `sw.js` ve `icons/` eklendi; Chrome/Edge adres çubuğunda "Yükle" çıkar, uygulama kendi penceresinde ve internetsiz açılır. Veriler aynı adreste kaldığı için kaybolmaz.
+- Web adresinden açılınca güncelleme düğmesi yedek alıp sayfayı yeniler (dosya indirmek gerekmez).
+
 ## 3.1.4
 - **Açılış dayanıklılığı:** tarayıcı veritabanı, yedek konumu denetimi veya kalıcı depolama isteği takılırsa zaman aşımıyla devam edilir; başlangıç hatasında "Yükleniyor" yerine hata nedeni gösterilir.
 

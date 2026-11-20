@@ -954,8 +954,8 @@ Object.assign(ACT, {
     modalGeri = null;
     modal(`🆕 Yeni sürüm ${esc(y.surum)}`, `<p>Sizde: <b>${SURUM}</b> → Yeni: <b>${esc(y.surum)}</b>${y.tarih ? ' (' + esc(y.tarih) + ')' : ''}</p>${(y.notlar && y.notlar.length) ? `<h4>Neler yeni?</h4><ul class="yardim">${y.notlar.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
 <h4>Güncelleme adımları</h4><ol class="adim"><li><b>Önce yedek alın</b> (Ayarlar → Yedekleme → "Yedeği indir" veya "Şimdi yedekle").</li><li>Yeni <code>index.html</code> dosyasını edinin${repoUrl ? ` (<a href="${esc(repoUrl)}" target="_blank" rel="noopener">${esc(g.repo)}</a> deposunda <i>index.html → Raw → Farklı kaydet</i>)` : ''} ve eskisinin <b>üzerine yazın</b> (aynı yerden/aynı adresten açın).</li><li>Açınca verileriniz korunur; "Uygulama güncellendi" bildirimi ve neler yeni listesi çıkar.</li></ol>
-${y.kaynak === 'site' ? '<p class="mut kucuk">Bu uygulama bir web adresinden açılıyor: aşağıdaki düğme yedek alıp sayfayı yeniler (yenilenmezse Ctrl+F5).</p>' : ''}`,
-      `<button class="btn" data-act="modal-kapat">Kapat</button>${y.kaynak === 'site' ? '<button class="btn pri" data-act="surum-yenile">Yedek al ve sayfayı yenile</button>' : '<button class="btn pri" data-act="surum-guncelle">⬇ Yeni sürümü indir ve güncelle</button>'}`);
+${(y.kaynak === 'site' || webAdresi()) ? '<p class="mut kucuk">Bu uygulama bir web adresinden açılıyor (yüklü uygulama da sayılır): aşağıdaki düğme yedek alıp sayfayı yeniler (yenilenmezse Ctrl+F5).</p>' : ''}`,
+      `<button class="btn" data-act="modal-kapat">Kapat</button>${(y.kaynak === 'site' || webAdresi()) ? '<button class="btn pri" data-act="surum-yenile">Yedek al ve güncelle (sayfayı yenile)</button>' : '<button class="btn pri" data-act="surum-guncelle">⬇ Yeni sürümü indir ve güncelle</button>'}`);
   },
   'surum-guncelle': async () => {
     if (!izin('ayar')) return bildir('Bu işlem için yetkiniz yok.', 'er');
@@ -1031,11 +1031,14 @@ function olaylariBagla() {
   setInterval(periyodikKontrol, 20000);
 }
 /** Başlangıçta beklenmedik hata olursa sonsuz "Yükleniyor" yerine nedeni gösterir. */
+const webAdresi = () => typeof location !== 'undefined' && /^https?:/.test(location.protocol);
 function baslatHatasi(e) {
   const el = typeof document !== 'undefined' && document.getElementById('app'); if (!el) return;
   el.innerHTML = '<div class="card" style="max-width:640px;margin:30px auto"><h3>⚠️ Uygulama başlatılamadı</h3><p>Verileriniz silinmedi. Sayfayı <b>Ctrl+F5</b> ile yenileyin; sürerse aşağıdaki hata satırını geliştiriciye iletin.</p><pre style="white-space:pre-wrap;background:#f4f4f6;padding:10px;border-radius:6px">' + esc(String((e && (e.stack || e.message)) || e)).slice(0, 800) + '</pre><p class="mut kucuk">Sürüm ' + esc(typeof SURUM !== 'undefined' ? SURUM : '?') + '</p></div>';
 }
 async function baslat() {
+  // Web uygulaması olarak yüklenebilirlik + çevrimdışı açılış (yalnızca http/https'te; dosyadan açılışta yoktur)
+  try { if (typeof navigator !== 'undefined' && navigator.serviceWorker && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {}); } catch (e) { /* yoksay */ }
   olaylariBagla();
   await yukle();
   ui.sonEtkinlik = Date.now();

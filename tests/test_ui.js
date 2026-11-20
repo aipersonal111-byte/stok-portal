@@ -116,7 +116,7 @@ function denge(h){ // etiket dengesi
   // hareketlerde sayım satırı → sayım iptali düğmesi
   S().ui.tab.hr='arsiv'; git('hareket'); S().ui.tab.hr='liste';
   // --- ayarlar: kâr oranı ---
-  git('ayar'); ok(app().textContent.includes('sürüm 3.1.3'),'ayarlarda sürüm numarası görünür'); dolu('#ay-kar','35,5'); dolu('#ay-firma','Test İşletme'); tikla('[data-act=ayar-kaydet]'); await bekle(5);
+  git('ayar'); ok(app().textContent.includes('sürüm 3.1.5'),'ayarlarda sürüm numarası görünür'); dolu('#ay-kar','35,5'); dolu('#ay-firma','Test İşletme'); tikla('[data-act=ayar-kaydet]'); await bekle(5);
   ok(S().db.ayar.kar===35.5&&S().db.firma==='Test İşletme','ayarlar kaydedildi');
   // kart düzenle & pasif & sil
   git('kartlar'); const kd=doc.querySelectorAll('[data-act=kart-duzenle]'); fire('click',kd[0]); ok($('dlg').open&&$('ek-ad'),'kart düzenle penceresi');
