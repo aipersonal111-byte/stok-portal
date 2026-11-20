@@ -219,4 +219,18 @@ async function guncellemeKontrol() {
   SurumDenetim.hata = 'Sürüm bilgisi alınamadı (çevrimdışı olabilirsiniz).';
   return { ok: false, msg: SurumDenetim.hata };
 }
+
+/** Yeni sürümün index.html'ini (GitHub raw veya aynı site) indirir ve doğru sürüm olduğunu denetler. */
+async function yeniSurumDosyasiAl() {
+  const y = SurumDenetim.yeni, g = (db.ayar && db.ayar.guncelleme) || {};
+  if (!y) return { ok: false, msg: 'Yeni sürüm bilgisi yok; önce "Şimdi denetle" deyin.' };
+  if (typeof fetch !== 'function') return { ok: false, msg: 'Bu ortam ağ erişimini desteklemiyor.' };
+  const url = y.kaynak === 'github' ? `https://raw.githubusercontent.com/${g.repo}/${g.dal || 'main'}/${y.indir || 'index.html'}?t=${Date.now()}` : new URL(y.indir || 'index.html', location.href).href + '?t=' + Date.now();
+  try {
+    const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) return { ok: false, msg: 'Dosya indirilemedi (HTTP ' + r.status + '). Depo herkese açık (public) olmalı.' };
+    const metin = await r.text();
+    if (!/<title>[^<]*<\/title>|<html/i.test(metin) || metin.indexOf(`const SURUM = '${y.surum}'`) < 0) return { ok: false, msg: `İndirilen dosya ${y.surum} sürümü değil (index.html ile version.json depoya birlikte yüklenmemiş olabilir).` };
+    return { ok: true, metin, surum: y.surum };
+  } catch (e) { return { ok: false, msg: 'İndirme başarısız: ' + (e.message || e) }; }
+}
 // ============================ DEPO BİTİŞ ============================

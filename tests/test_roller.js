@@ -92,7 +92,7 @@ const navMetni = A => A.$('nav').textContent;
   const degistir = f => { for (const k of ['ls']) { const o = JSON.parse(s2.ls.sos_db); f(o); s2.ls.sos_db = JSON.stringify(o); } const o = JSON.parse(s2.idb.sos_stok_v1.stores.kv.data.get('db')); f(o); s2.idb.sos_stok_v1.stores.kv.data.set('db', JSON.stringify(o)); };
   degistir(o => { o.app = '1.0.0'; });
   B = ortam(s2); await bekle(120);
-  ok(B.dlg().open && B.dlg().textContent.includes('Uygulama güncellendi') && B.dlg().textContent.includes('1.0.0') && B.dlg().textContent.includes('1.1.0') && B.dlg().textContent.includes('Kullanıcı girişi'), 'eski sürüm verisi açılınca "Uygulama güncellendi" + neler yeni');
+  ok(B.dlg().open && B.dlg().textContent.includes('Uygulama güncellendi') && B.dlg().textContent.includes('1.0.0') && B.dlg().textContent.includes('3.1.2') && B.dlg().textContent.includes('Kullanıcı girişi'), 'eski sürüm verisi açılınca "Uygulama güncellendi" + neler yeni');
   ok(B.run('db.app') === B.run('SURUM') && B.run("db.log.some(l=>l.islem==='SURUM')"), 'veri sürümü güncellendi, günlüğe yazıldı');
   ok([...s2.idb.sos_stok_v1.stores.snap.data.values()].some(x => /Sürüm güncellemesi öncesi/.test(x.etiket) && JSON.parse(x.json).app === '1.0.0'), 'yükseltmeden ÖNCE otomatik anlık görüntü alındı');
   B.tikla('[data-act=surum-tamam]'); ok(B.dlg().open || true, '(tamam)');
@@ -110,9 +110,17 @@ const navMetni = A => A.$('nav').textContent;
   ok(r.ok && r.yeni && r.yeni.surum === '9.9.0' && urls.some(u => u === 'https://raw.githubusercontent.com/ornek/stok-portal/main/version.json'), 'GitHub version.json okunur, yeni sürüm bulunur');
   C.run('bannerGuncelle()'); ok(C.banner().includes('Yeni sürüm var') && C.banner().includes('9.9.0'), 'banner: "Yeni sürüm var: 9.9.0"');
   C.tikla('[data-act=surum-yeni]'); ok(C.dlg().open && C.dlg().textContent.includes('Önce yedek alın') && C.dlg().textContent.includes('Harika özellik') && C.dlg().textContent.includes('üzerine yazın'), 'güncelleme adımları + notlar gösterilir');
+  // güncelleme düğmesi: yeni index.html indirilir ve sürümü doğrulanır
+  { const urls4 = []; const f4 = async u => { urls4.push(u); if (/version\.json/.test(u)) return { ok: true, json: async () => ({ surum: '9.9.0', indir: 'index.html' }) }; return { ok: true, status: 200, text: async () => '<html><script>const SURUM = \'9.9.0\';</script></html>' }; };
+    const C4 = ortam(yeniSt(), { fetch: f4 }); await bekle(60); C4.tikla('[data-act=gate-atla]'); C4.run("db.ayar.guncelleme = { repo: 'ornek/stok-portal', dal: 'main' }"); await C4.run('guncellemeKontrol()');
+    const d = await C4.run('yeniSurumDosyasiAl()'); ok(d.ok && d.surum === '9.9.0' && urls4.some(u => u.startsWith('https://raw.githubusercontent.com/ornek/stok-portal/main/index.html')), 'yeni index.html GitHub\'dan indirilir ve sürümü doğrulanır');
+    C4.run('bannerGuncelle()'); C4.tikla('[data-act=surum-yeni]'); ok(C4.dlg().innerHTML.includes('data-act="surum-guncelle"'), 'uyarıda "Yeni sürümü indir ve güncelle" düğmesi var');
+    const f5 = async u => /version\.json/.test(u) ? { ok: true, json: async () => ({ surum: '9.9.0' }) } : { ok: true, status: 200, text: async () => '<html>SURUM = 1.1.0</html>' };
+    const C5 = ortam(yeniSt(), { fetch: f5 }); await bekle(60); C5.tikla('[data-act=gate-atla]'); C5.run("db.ayar.guncelleme = { repo: 'ornek/stok-portal', dal: 'main' }"); await C5.run('guncellemeKontrol()');
+    const d5 = await C5.run('yeniSurumDosyasiAl()'); ok(!d5.ok && d5.msg.includes('9.9.0 sürümü değil'), 'yanlış/eski index.html reddedilir: ' + d5.msg); }
   const C2 = ortam(yeniSt(), { fetch: async () => { throw new Error('ağ yok'); } }); await bekle(60); C2.run("db.ayar.guncelleme = { repo: 'ornek/stok-portal', dal: 'main' }");
   const r2 = await C2.run('guncellemeKontrol()'); ok(!r2.ok && r2.msg.includes('çevrimdışı'), 'çevrimdışıysa sessizce atlanır: ' + r2.msg);
   const r3 = await ortam(yeniSt()).run('guncellemeKontrol()'); ok(!r3.ok && r3.msg.includes('kaynağı tanımlı değil'), 'kaynak tanımsızsa denetim yapılmaz');
-  const same = async () => ({ ok: true, json: async () => ({ surum: '1.1.0' }) }); const C3 = ortam(yeniSt(), { fetch: same }); await bekle(60); C3.run("db.ayar.guncelleme = { repo: 'a/b', dal: 'main' }"); const r4 = await C3.run('guncellemeKontrol()'); ok(r4.ok && r4.yeni === null, 'aynı sürümde "güncel" sonucu');
+  const same = async () => ({ ok: true, json: async () => ({ surum: '3.1.2' }) }); const C3 = ortam(yeniSt(), { fetch: same }); await bekle(60); C3.run("db.ayar.guncelleme = { repo: 'a/b', dal: 'main' }"); const r4 = await C3.run('guncellemeKontrol()'); ok(r4.ok && r4.yeni === null, 'aynı sürümde "güncel" sonucu');
   console.log(hata ? '\nHATA: ' + hata : '\nROL / KİMLİK / SÜRÜM TESTLERİ GEÇTİ'); process.exit(hata ? 1 : 0);
 })().catch(e => { console.log('İSTİSNA:', e.stack || e); process.exit(1); });

@@ -955,7 +955,23 @@ Object.assign(ACT, {
     modal(`🆕 Yeni sürüm ${esc(y.surum)}`, `<p>Sizde: <b>${SURUM}</b> → Yeni: <b>${esc(y.surum)}</b>${y.tarih ? ' (' + esc(y.tarih) + ')' : ''}</p>${(y.notlar && y.notlar.length) ? `<h4>Neler yeni?</h4><ul class="yardim">${y.notlar.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
 <h4>Güncelleme adımları</h4><ol class="adim"><li><b>Önce yedek alın</b> (Ayarlar → Yedekleme → "Yedeği indir" veya "Şimdi yedekle").</li><li>Yeni <code>index.html</code> dosyasını edinin${repoUrl ? ` (<a href="${esc(repoUrl)}" target="_blank" rel="noopener">${esc(g.repo)}</a> deposunda <i>index.html → Raw → Farklı kaydet</i>)` : ''} ve eskisinin <b>üzerine yazın</b> (aynı yerden/aynı adresten açın).</li><li>Açınca verileriniz korunur; "Uygulama güncellendi" bildirimi ve neler yeni listesi çıkar.</li></ol>
 ${y.kaynak === 'site' ? '<p class="mut kucuk">Bu uygulama bir web adresinden açılıyor: aşağıdaki düğme yedek alıp sayfayı yeniler (yenilenmezse Ctrl+F5).</p>' : ''}`,
-      `<button class="btn" data-act="modal-kapat">Kapat</button>${y.kaynak === 'site' ? '<button class="btn pri" data-act="surum-yenile">Yedek al ve sayfayı yenile</button>' : ''}`);
+      `<button class="btn" data-act="modal-kapat">Kapat</button>${y.kaynak === 'site' ? '<button class="btn pri" data-act="surum-yenile">Yedek al ve sayfayı yenile</button>' : '<button class="btn pri" data-act="surum-guncelle">⬇ Yeni sürümü indir ve güncelle</button>'}`);
+  },
+  'surum-guncelle': async () => {
+    if (!izin('ayar')) return bildir('Bu işlem için yetkiniz yok.', 'er');
+    bildir('Önce yedek alınıyor, yeni sürüm indiriliyor…'); Kayit.bekleyen = true; try { await Kayit.flush('zorla'); } catch (e) { /* yedek hatası uyarı olarak zaten görünür */ }
+    const r = await yeniSurumDosyasiAl(); if (!r.ok) return bildir(r.msg, 'er');
+    let yazildi = false;
+    if (typeof window.showSaveFilePicker === 'function') {
+      try { const h = await window.showSaveFilePicker({ suggestedName: 'index.html', types: [{ description: 'Stok Portal', accept: { 'text/html': ['.html'] } }] }); const w = await h.createWritable(); await w.write(r.metin); await w.close(); yazildi = true; } catch (e) { if (e && e.name === 'AbortError') return bildir('Güncelleme iptal edildi.', 'er'); }
+    }
+    if (!yazildi) dosyaIndir('index.html', r.metin, 'text/html');
+    logYaz('SURUM', `Yeni sürüm dosyası alındı: ${r.surum}`); degisti();
+    modalGeri = null;
+    modal('✅ Yeni sürüm hazır', yazildi
+      ? `<p><b>${esc(r.surum)}</b> sürümü seçtiğiniz dosyaya yazıldı. Şimdi <b>bu sekmeyi kapatıp</b> o dosyayı yeniden açın; verileriniz korunur ve "neler yeni" bildirimi çıkar.</p><p class="mut kucuk">Eski dosyanın üzerine yazdıysanız ve aynı yerden açarsanız veri aynı kalır.</p>`
+      : `<p><b>${esc(r.surum)}</b> sürümü <code>index.html</code> adıyla indirildi (İndirilenler klasörü). Şimdi:</p><ol class="adim"><li>Bu sekmeyi kapatın.</li><li>İndirilen <code>index.html</code>'i eski dosyanın <b>üzerine kopyalayın</b> (aynı klasörde, "Değiştir" deyin).</li><li>Eski dosyayı açtığınız yerden yeniden açın.</li></ol>`,
+      '<button class="btn pri" data-act="modal-kapat">Tamam</button>');
   },
   'surum-yenile': async () => { Kayit.bekleyen = true; await Kayit.flush('zorla'); location.reload(); },
 });

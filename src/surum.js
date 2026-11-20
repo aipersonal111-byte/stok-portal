@@ -1,8 +1,12 @@
 'use strict';
 // Sürüm bilgisi. Yeni sürüm yayınlarken: SURUM, DEGISIKLIKLER, package.json ve CHANGELOG.md birlikte güncellenir.
-const SURUM = '1.1.0';
+const SURUM = '3.1.2';
 const DB_SEMA = 2;           // veri biçimi sürümü: eski dosya, daha yeni biçimdeki veriyi bozmasın diye kontrol edilir
 const DEGISIKLIKLER = [
+  { s: '3.1.2', t: '2026-11-20', n: [
+    'Yeni sürüm uyarısına "Yeni sürümü indir ve güncelle" düğmesi eklendi: önce yedek alır, GitHub\'dan yeni index.html\'i indirir ve doğrular, eski dosyanın üzerine yazdırır (veya indirir)',
+    'Sürüm numarası 3.1.2 olarak düzenlendi',
+  ] },
   { s: '1.1.0', t: '2026-11-13', n: [
     'Kullanıcı girişi, roller (Yönetici / Yetkili / Personel / İzleyici) ve kayıt günlüğü (kim, ne zaman, ne yaptı)',
     'Personel ve izleyici rollerinde maliyet, kâr ve ciro bilgileri gizlenir',
