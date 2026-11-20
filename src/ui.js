@@ -1030,6 +1030,11 @@ function olaylariBagla() {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { Kayit.senkron(); Kayit.flush(); } });
   setInterval(periyodikKontrol, 20000);
 }
+/** Başlangıçta beklenmedik hata olursa sonsuz "Yükleniyor" yerine nedeni gösterir. */
+function baslatHatasi(e) {
+  const el = typeof document !== 'undefined' && document.getElementById('app'); if (!el) return;
+  el.innerHTML = '<div class="card" style="max-width:640px;margin:30px auto"><h3>⚠️ Uygulama başlatılamadı</h3><p>Verileriniz silinmedi. Sayfayı <b>Ctrl+F5</b> ile yenileyin; sürerse aşağıdaki hata satırını geliştiriciye iletin.</p><pre style="white-space:pre-wrap;background:#f4f4f6;padding:10px;border-radius:6px">' + esc(String((e && (e.stack || e.message)) || e)).slice(0, 800) + '</pre><p class="mut kucuk">Sürüm ' + esc(typeof SURUM !== 'undefined' ? SURUM : '?') + '</p></div>';
+}
 async function baslat() {
   olaylariBagla();
   await yukle();
@@ -1050,5 +1055,5 @@ async function baslat() {
 }
 
 // ============================ ARAYÜZ BİTİŞ ============================
-if (typeof document !== 'undefined' && document.getElementById && document.getElementById('app')) baslat();
+if (typeof document !== 'undefined' && document.getElementById && document.getElementById('app')) baslat().catch(baslatHatasi);
 globalThis.SOS = { SAYFA, ui, ACT, periyodikKontrol, yedekMesaj, maskele, render, get db() { return db; }, set db(v) { db = v; } };

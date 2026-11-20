@@ -1,5 +1,8 @@
 # Sürüm geçmişi
 
+## 3.1.4
+- **Açılış dayanıklılığı:** tarayıcı veritabanı, yedek konumu denetimi veya kalıcı depolama isteği takılırsa zaman aşımıyla devam edilir; başlangıç hatasında "Yükleniyor" yerine hata nedeni gösterilir.
+
 ## 3.1.3
 - **Güncelleme deposu gömüldü** (`aipersonal111-byte/stok-portal`, dal `main`): kullanıcının depo adı yazması gerekmez; Ayarlar → Sürüm'deki alan boşsa varsayılan kullanılır, doluysa o geçerli olur.
 

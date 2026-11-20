@@ -164,15 +164,17 @@ kaydetKancasi = () => Kayit.planla();
 const bc = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('sos_stok_v1') : null;
 if (bc) bc.onmessage = e => { if (e.data && e.data.gun > db.gun) { Kayit.eskiSekme = true; bannerGuncelle(); durumGuncelle(); } };
 
+/** Takılabilecek tarayıcı çağrılarının uygulamayı sonsuza dek "Yükleniyor"da bırakmasını önler. */
+const zamanAsimi = (p, ms, ad) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error((ad || 'İşlem') + ' zaman aşımına uğradı')), ms))]);
 async function yukle() {
   let a = null, b = null;
-  try { await Depo.ac(); const s = await Depo.kvAl('db'); if (s) a = JSON.parse(s); Kayit.sonIndirme = (await Depo.kvAl('sonIndirme')) || 0; } catch (e) { Depo.hata = String(e.message || e); }
+  try { await zamanAsimi(Depo.ac(), 6000, 'Tarayıcı veritabanı'); const s = await Depo.kvAl('db'); if (s) a = JSON.parse(s); Kayit.sonIndirme = (await Depo.kvAl('sonIndirme')) || 0; } catch (e) { Depo.hata = String(e.message || e); }
   try { const s = localStorage.getItem('sos_db'); if (s) b = JSON.parse(s); } catch (e) { /* yoksay */ }
   const adaylar = [a, b].filter(x => x && dogrula(x)).sort((x, y) => (y.gun || 0) - (x.gun || 0));
   db = adaylar[0] || bosDb();
   dv++; memo.clear();
-  await Klasor.baslat();
-  try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) { /* yoksay */ }
+  try { await zamanAsimi(Klasor.baslat(), 6000, 'Yedek konumu denetimi'); } catch (e) { Klasor.hata = String(e.message || e); }
+  try { if (navigator.storage && navigator.storage.persist) await zamanAsimi(navigator.storage.persist(), 3000, 'Kalıcı depolama isteği'); } catch (e) { /* yoksay */ }
 }
 
 function dosyaIndir(ad, metin, mime) {

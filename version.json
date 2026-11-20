@@ -1,9 +1,9 @@
 {
-  "surum": "3.1.3",
+  "surum": "3.1.4",
   "tarih": "2026-11-20",
   "dbSema": 2,
   "notlar": [
-    "Güncelleme deposu uygulamaya gömüldü (aipersonal111-byte/stok-portal): kullanıcının depo adı girmesi gerekmez, yeni sürüm denetimi kendiliğinden çalışır"
+    "Açılışta tarayıcı çağrılarından biri takılsa bile uygulama \"Yükleniyor\" ekranında kalmaz (zaman aşımı); beklenmedik hata olursa nedeni ekranda gösterilir"
   ],
   "indir": "index.html"
 }
